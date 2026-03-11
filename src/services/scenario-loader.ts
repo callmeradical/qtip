@@ -1,22 +1,47 @@
 import fs from 'fs';
 import path from 'path';
 import yaml from 'js-yaml';
+import axios from 'axios';
 import { Scenario, ScenarioSchema } from '../models/scenario';
 
 export class ScenarioLoader {
-  private scenariosDir: string;
+  private scenariosSource: string;
 
-  constructor(scenariosDir: string) {
-    this.scenariosDir = scenariosDir;
+  constructor(scenariosSource: string) {
+    this.scenariosSource = scenariosSource;
   }
 
   async loadAll(): Promise<Scenario[]> {
+    if (this.scenariosSource.startsWith('http')) {
+      return this.loadFromUrl(this.scenariosSource);
+    }
+    return this.loadFromLocal(this.scenariosSource);
+  }
+
+  private async loadFromUrl(url: string): Promise<Scenario[]> {
+    try {
+      const response = await axios.get(url);
+      const data = typeof response.data === 'string' ? yaml.load(response.data) : response.data;
+
+      // If the URL returns an array of scenarios
+      if (Array.isArray(data)) {
+        return data.map(s => ScenarioSchema.parse(s));
+      }
+      // If it's a single scenario
+      return [ScenarioSchema.parse(data)];
+    } catch (error: any) {
+      console.error(`Error loading scenarios from URL ${url}:`, error.message);
+      return [];
+    }
+  }
+
+  private loadFromLocal(dir: string): Scenario[] {
     const scenarios: Scenario[] = [];
-    if (!fs.existsSync(this.scenariosDir)) {
+    if (!fs.existsSync(dir)) {
       return [];
     }
 
-    const files = this.recursiveReaddir(this.scenariosDir).filter(
+    const files = this.recursiveReaddir(dir).filter(
       (file) => file.endsWith('.yaml') || file.endsWith('.yml')
     );
 

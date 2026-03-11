@@ -13,7 +13,7 @@ export const ApiInteractionSchema = z.object({
     method: z.string(),
     path: z.string(),
     body: z.any().optional(),
-    headers: z.record(z.string()).optional(),
+    headers: z.record(z.string(), z.string()).optional(),
   }),
 });
 
@@ -27,10 +27,15 @@ export const LogInteractionSchema = z.object({
   query: z.string(),
 });
 
+export const UiInteractionSchema = z.object({
+  type: z.literal('ui'),
+});
+
 export const InteractionSchema = z.discriminatedUnion('type', [
   ApiInteractionSchema,
   CliInteractionSchema,
   LogInteractionSchema,
+  UiInteractionSchema,
 ]);
 
 export const CheckTypeSchema = z.enum(['status_code', 'json_path', 'stdout', 'stderr', 'log_contains', 'log_not_contains']);

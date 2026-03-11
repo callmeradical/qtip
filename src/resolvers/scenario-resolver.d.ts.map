@@ -1,0 +1,1 @@
+{"version":3,"file":"scenario-resolver.d.ts","sourceRoot":"","sources":["scenario-resolver.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,QAAQ,EAAE,MAAM,oBAAoB,CAAC;AAC9C,OAAO,EAAE,eAAe,EAAE,MAAM,4BAA4B,CAAC;AAE7D,qBAAa,gBAAgB;IAC3B,OAAO,CAAC,SAAS,CAAkB;gBAEvB,SAAS,GAAE,QAAQ,EAAO;IAItC,OAAO,CAAC,QAAQ,EAAE,eAAe,GAAG,QAAQ,EAAE;CA2B/C"}

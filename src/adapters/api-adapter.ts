@@ -1,4 +1,4 @@
-import axios, { AxiosResponse } from 'axios';
+import axios, { AxiosResponse, AxiosRequestConfig, RawAxiosRequestHeaders } from 'axios';
 import { SubjectManifest } from '../models/subject-manifest';
 import { Scenario, ApiInteractionSchema } from '../models/scenario';
 
@@ -21,14 +21,16 @@ export class ApiAdapter {
     const url = `${apiInterface.baseUrl}${interaction.request.path}`;
     const start = Date.now();
 
+    const config: AxiosRequestConfig = {
+      method: interaction.request.method,
+      url,
+      data: interaction.request.body,
+      headers: interaction.request.headers as RawAxiosRequestHeaders,
+      validateStatus: () => true,
+    };
+
     try {
-      const response: AxiosResponse = await axios({
-        method: interaction.request.method,
-        url,
-        data: interaction.request.body,
-        headers: interaction.request.headers,
-        validateStatus: () => true, // Don't throw on error status codes
-      });
+      const response: AxiosResponse = await axios(config);
 
       return {
         status: response.status,

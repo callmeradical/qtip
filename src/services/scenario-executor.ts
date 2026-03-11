@@ -31,8 +31,10 @@ export class ScenarioExecutor {
         case 'logs':
           evidence = await this.logAdapter.execute(manifest, scenario);
           break;
+        case 'ui':
+          throw new Error('UI Adapter not implemented in MVP');
         default:
-          throw new Error(`Unsupported interaction type: ${scenario.interaction.type}`);
+          throw new Error(`Unsupported interaction type`);
       }
 
       const failures = this.evaluateChecks(scenario, evidence);
