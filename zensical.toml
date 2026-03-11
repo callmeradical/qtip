@@ -46,6 +46,7 @@ Copyright &copy; 2026 The authors
 # Read more: https://zensical.org/docs/setup/navigation/
 nav = [
     { "Overview" = "index.md" },
+    { "Getting Started" = "getting-started.md" },
     { "Agent Sandboxing" = "agent-sandboxing.md" },
     { "Architecture" = "architecture.md" },
     { "Testability Matrix" = "testability.md" },
