@@ -1,0 +1,26 @@
+id: AUTH-LOGIN-001
+name: Valid login returns token
+applies_to:
+  capabilities: [auth]
+  interfaces: [api]
+acceptance_criteria:
+  - id: AC-1
+    description: Login succeeds
+  - id: AC-2
+    description: Token returned
+interaction:
+  type: api
+  request:
+    method: POST
+    path: /login
+    body:
+      username: test@example.com
+      password: secret
+checks:
+  - type: status_code
+    expected: 200
+    acceptance_criteria: AC-1
+  - type: json_path
+    path: $.token
+    exists: true
+    acceptance_criteria: AC-2

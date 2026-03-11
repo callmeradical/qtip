@@ -1,0 +1,15 @@
+id: CLI-BUILD-001
+name: Build command succeeds
+applies_to:
+  capabilities: [build]
+  interfaces: [cli]
+acceptance_criteria:
+  - id: AC-1
+    description: Build exits with 0
+interaction:
+  type: cli
+  command: npm run build
+checks:
+  - type: status_code
+    expected: 0
+    acceptance_criteria: AC-1

@@ -1,0 +1,14 @@
+id: LOG-ERROR-001
+name: Validate no errors in logs
+applies_to:
+  capabilities: [auth]
+  interfaces: [logs]
+acceptance_criteria:
+  - id: AC-3
+    description: No ERROR log event
+interaction:
+  type: logs
+  query: "ERROR"
+checks:
+  - type: log_not_contains
+    acceptance_criteria: AC-3

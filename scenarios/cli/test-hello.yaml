@@ -1,0 +1,18 @@
+id: TEST-CLI-HELLO
+name: Echo hello succeeds
+applies_to:
+  capabilities: [test]
+  interfaces: [cli]
+acceptance_criteria:
+  - id: AC-1
+    description: Should say hello
+interaction:
+  type: cli
+  command: echo "hello world"
+checks:
+  - type: status_code
+    expected: 0
+    acceptance_criteria: AC-1
+  - type: stdout
+    expected: "hello world"
+    acceptance_criteria: AC-1
