@@ -2,7 +2,20 @@
 
 **qtip** is a standardized mechanism for validating software systems using reusable scenario definitions. It decouples test definitions from application code, allowing the system under test (SUT) to describe itself while the platform decides how to evaluate it.
 
+## 🛡️ The "Oracle" Pattern: Agent Sandboxing
+
+qtip was specifically designed to solve the "Agent Integrity" problem in autonomous software engineering. When an AI agent is tasked with modifying a codebase, there is a risk that it might "cheat" by altering the tests to pass its own broken code.
+
+**qtip enforces a one-way validation moat:**
+
+1.  **Immutability**: By loading scenarios from a **remote URL** or a **restricted repository**, you ensure the agent cannot redefine "success."
+2.  **Decoupling**: The agent works in the application repository, but the "definition of truth" lives in qtip.
+3.  **Oracle Feedback**: The agent submits its work and receives a deterministic, objective report on which Acceptance Criteria (AC) were met and which failed.
+
+This makes qtip the ideal **Evaluation Loop** for AI-driven development.
+
 ## 🚀 Key Features
+...
 
 - **Decoupled Scenarios**: Store and version scenarios in a separate repository or directory.
 - **Manifest-Driven**: The SUT submits a "Subject Manifest" describing its capabilities and interfaces.
