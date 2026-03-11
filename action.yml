@@ -1,0 +1,36 @@
+name: 'qtip Scenario Evaluation'
+description: 'Evaluate software systems against reusable scenarios and acceptance criteria'
+author: 'callmeradical'
+
+inputs:
+  manifest:
+    description: 'The Subject Manifest (JSON string or path to .json file)'
+    required: true
+  scenarios-directory:
+    description: 'Path to the directory containing scenario YAML files'
+    required: false
+    default: './scenarios'
+  qtip-version:
+    description: 'The version of qtip to use (defaults to current main)'
+    required: false
+    default: 'main'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+
+    - name: Install qtip dependencies
+      shell: bash
+      run: |
+        # In a real action, we would install qtip globally or from a specific package
+        # For this prototype, we'll install local dependencies
+        npm ci
+
+    - name: Run qtip Evaluation
+      shell: bash
+      run: |
+        npm run qtip:evaluate -- "${{ inputs.manifest }}" "${{ inputs.scenarios-directory }}"

@@ -102,11 +102,31 @@ npm run docs:build
 npm run docs:serve
 ```
 
-## 🧪 Testing
+## 🐙 GitHub Action
 
-```bash
-npm test
+You can use **qtip** directly in your CI pipelines with our GitHub Action.
+
+```yaml
+steps:
+  - uses: actions/checkout@v4
+  - name: Evaluate Scenarios
+    uses: callmeradical/qtip@main
+    with:
+      manifest: |
+        {
+          "projectId": "my-service",
+          "environment": "ci",
+          "interfaces": [{ "type": "cli" }],
+          "capabilities": ["build"]
+        }
+      scenarios-directory: './scenarios'
 ```
+
+The action will:
+1. Resolve applicable scenarios.
+2. Execute interactions (API, CLI, Logs).
+3. Post a **Job Summary** table with the results.
+4. Fail the build if any acceptance criteria are not met.
 
 ## 📜 License
 ISC

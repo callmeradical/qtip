@@ -12,7 +12,8 @@
     "test": "jest",
     "build": "rimraf dist && tsc",
     "docs:build": "zensical build",
-    "docs:serve": "zensical serve"
+    "docs:serve": "zensical serve",
+    "qtip:evaluate": "ts-node src/cli.ts"
   },
   "keywords": [],
   "author": "",
