@@ -1,0 +1,29 @@
+{
+  "projectId": "qtip",
+  "repoUrl": "https://github.com/callmeradical/qtip",
+  "environment": "ci-runner",
+  "interfaces": [
+    {
+      "type": "api",
+      "baseUrl": "http://localhost:8080"
+    },
+    {
+      "type": "cli"
+    }
+  ],
+  "observability": {
+    "logs": {
+      "type": "file",
+      "path": "./logs/app.log"
+    }
+  },
+  "capabilities": [
+    "auth",
+    "scenario-resolution",
+    "evaluation",
+    "cli-core",
+    "operational-health",
+    "ci-integration",
+    "platform-extensibility"
+  ]
+}

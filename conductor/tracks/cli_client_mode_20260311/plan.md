@@ -18,6 +18,8 @@ Update the CLI entry point to handle the `--remote` flag and delegate evaluation
 ## Phase 3: Documentation and E2E
 Finalize documentation and verify end-to-end functionality.
 
-- [ ] Task: Create a comprehensive E2E test scenario with a mock server.
-- [ ] Task: Update `docs/getting-started.md` and `README.md` with usage examples for `--remote`.
+- [x] Task: Create a comprehensive E2E test scenario with a mock server. ad68fd3
+- [x] Task: Create `.gitignore` to exclude node_modules, dist, and .todos. fc054d7
+- [x] Task: Create GitHub Workflow `.github/workflows/qtip.yml` to run qtip evaluation. c718ed6
+- [x] Task: Update `docs/getting-started.md` and `README.md` with usage examples for `--remote`. 47fdb7a
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: Documentation and E2E' (Protocol in workflow.md)
