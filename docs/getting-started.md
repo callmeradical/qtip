@@ -97,7 +97,35 @@ When a manifest is submitted, qtip will:
 3.  **Evaluate**: Compare the results against the defined checks.
 4.  **Report**: Produce a structured JSON report mapping failures to Acceptance Criteria.
 
-## 7. Next Steps
+## 7. Modes of Operation
+
+Depending on your workflow, you can use **qtip** in three primary ways:
+
+### A. Local CLI (Standalone Runner)
+Best for developers testing their services locally or simple CI scripts. In this mode, the `qtip` command is a standalone runner that processes manifests and scenarios directly on the machine.
+
+*   **How it works:** You pass the manifest and scenarios directory as arguments.
+*   **Example:**
+    ```bash
+    qtip ./manifest.json --scenarios ./my-scenarios
+    ```
+
+### B. Runner Platform (Centralized Service)
+Best for large organizations with a central "Quality Gateway." The **Subject** (your application) is responsible for pushing its identity to the qtip server.
+
+*   **How it works:** Your application's CI pipeline finishes a deployment and then `POST`s its manifest to the qtip server's endpoint.
+*   **The Flow:**
+    1.  Subject deploys to a test environment.
+    2.  CI script calls: `curl -X POST http://qtip-server:3000/api/v1/evaluate -d @manifest.json`.
+    3.  qtip server pulls the scenarios, executes the tests, and returns a JSON report.
+
+### C. GitHub Action (CI/CD Integrated)
+Best for teams using GitHub Actions who want "Quality Gating" built into their PRs.
+
+*   **How it works:** The `callmeradical/qtip` action installs the runner inside the GitHub environment and executes the evaluation locally.
+*   **Key Benefit:** Results are automatically posted to the **GitHub Step Summary** for easy visibility by reviewers.
+
+## 8. Next Steps
 
 - **Agent Sandboxing**: Learn why the [Two-Repo Strategy](./agent-sandboxing.md) is critical for AI-driven development.
 - **GitHub Action**: Use qtip in CI/CD with our [GitHub Action](./README.md#github-action).

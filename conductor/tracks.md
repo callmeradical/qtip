@@ -4,5 +4,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [ ] **Track: Implement a --remote flag for the CLI to delegate manifest evaluation to a central qtip server.**
+- [~] **Track: Implement a --remote flag for the CLI to delegate manifest evaluation to a central qtip server.**
 *Link: [./tracks/cli_client_mode_20260311/](./tracks/cli_client_mode_20260311/)*
