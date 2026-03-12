@@ -1,11 +1,11 @@
 # Implementation Plan: CLI Client Mode
 
-## Phase 1: Remote Evaluation Service
+## Phase 1: Remote Evaluation Service [checkpoint: b9e1d87]
 Create a dedicated service to handle communication with a remote qtip server.
 
 - [x] Task: Write unit tests for `RemoteEvaluator` in `src/tests/remote-evaluator.test.ts`. 584f259
 - [x] Task: Implement `RemoteEvaluator` class in `src/services/remote-evaluator.ts`. 584f259
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: Remote Evaluation Service' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 1: Remote Evaluation Service' (Protocol in workflow.md) b9e1d87
 
 ## Phase 2: CLI CLI Integration
 Update the CLI entry point to handle the `--remote` flag and delegate evaluation.
