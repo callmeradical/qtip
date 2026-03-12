@@ -1,11 +1,11 @@
 # Implementation Plan: Multi-Service Evaluation Support
 
 ## Phase 1: Update Schema and Models
-- [ ] Task: Update `SubjectManifestSchema` to include an optional `name` for interface identification.
-    - [ ] Add `name` field to `SubjectInterfaceSchema` in `src/models/subject-manifest.ts`.
-- [ ] Task: Update `ScenarioSchema` to include a `service` field in `ApiInteractionSchema`.
-    - [ ] Add `service` field to `ApiInteractionSchema` in `src/models/scenario.ts`.
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: Update Schema and Models' (Protocol in workflow.md)
+- [x] Task: Update `SubjectManifestSchema` to include an optional `name` for interface identification. 19a9a06
+    - [x] Add `name` field to `SubjectInterfaceSchema` in `src/models/subject-manifest.ts`. 19a9a06
+- [x] Task: Update `ScenarioSchema` to include a `service` field in `ApiInteractionSchema`. 19a9a06
+    - [x] Add `service` field to `ApiInteractionSchema` in `src/models/scenario.ts`. 19a9a06
+- [x] Task: Conductor - User Manual Verification 'Phase 1: Update Schema and Models' (Protocol in workflow.md) 19a9a06
 
 ## Phase 2: Update ApiAdapter for Service Resolution
 - [ ] Task: Write Tests for Service Resolution in `ApiAdapter`.
