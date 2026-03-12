@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+dist/
+
+# Logs and databases
+.todos/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Gemini / IDEs
+.gemini/
+.cache/
+.vscode/
+.idea/
+
+# Coverage
+coverage/
