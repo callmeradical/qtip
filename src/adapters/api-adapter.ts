@@ -12,10 +12,17 @@ export interface ApiEvidence {
 export class ApiAdapter {
   async execute(manifest: SubjectManifest, scenario: Scenario): Promise<ApiEvidence> {
     const interaction = ApiInteractionSchema.parse(scenario.interaction);
-    const apiInterface = manifest.interfaces.find((i) => i.type === 'api');
+    
+    const apiInterface = manifest.interfaces.find((i) => {
+      if (interaction.service) {
+        return i.type === 'api' && i.name === interaction.service;
+      }
+      return i.type === 'api';
+    });
 
     if (!apiInterface || !apiInterface.baseUrl) {
-      throw new Error(`API interface not found in manifest for project ${manifest.projectId}`);
+      const serviceName = interaction.service ? `service '${interaction.service}'` : 'API interface';
+      throw new Error(`${serviceName} not found in manifest for project ${manifest.projectId}`);
     }
 
     const url = `${apiInterface.baseUrl}${interaction.request.path}`;
@@ -27,6 +34,7 @@ export class ApiAdapter {
       data: interaction.request.body,
       headers: interaction.request.headers as RawAxiosRequestHeaders,
       validateStatus: () => true,
+      timeout: 30000,
     };
 
     try {
@@ -38,7 +46,7 @@ export class ApiAdapter {
         headers: response.headers as Record<string, string>,
         responseTime: Date.now() - start,
       };
-    } catch (error) {
+    } catch (error: any) {
       if (axios.isAxiosError(error)) {
         return {
           status: error.response?.status || 500,
