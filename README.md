@@ -82,6 +82,17 @@ npm install
 npm run build
 ```
 
+### CLI Usage
+You can run qtip evaluations locally or delegate them to a remote server.
+
+```bash
+# Local Evaluation
+node dist/cli.js <manifest.json> --scenarios ./scenarios
+
+# Remote Evaluation (Delegated to a central server)
+node dist/cli.js <manifest.json> --remote http://localhost:3000/api/v1
+```
+
 ### Starting the Server
 ```bash
 # Start the runner platform

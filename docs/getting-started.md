@@ -105,9 +105,14 @@ Depending on your workflow, you can use **qtip** in three primary ways:
 Best for developers testing their services locally or simple CI scripts. In this mode, the `qtip` command is a standalone runner that processes manifests and scenarios directly on the machine.
 
 *   **How it works:** You pass the manifest and scenarios directory as arguments.
-*   **Example:**
+*   **Local Execution:**
     ```bash
     qtip ./manifest.json --scenarios ./my-scenarios
+    ```
+*   **Remote Execution (Delegated):**
+    You can also use the CLI to delegate the evaluation to a remote qtip server:
+    ```bash
+    qtip ./manifest.json --remote http://qtip-server.example.com/api/v1
     ```
 
 ### B. Runner Platform (Centralized Service)
