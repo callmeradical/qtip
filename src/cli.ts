@@ -4,6 +4,7 @@ import { SubjectManifest, SubjectManifestSchema } from './models/subject-manifes
 import { ScenarioLoader } from './services/scenario-loader';
 import { ScenarioResolver } from './resolvers/scenario-resolver';
 import { ScenarioExecutor } from './services/scenario-executor';
+import { RemoteEvaluator } from './services/remote-evaluator';
 
 export interface SubjectResult {
   projectId: string;
@@ -19,7 +20,7 @@ export interface EvaluationOutcome {
   totalSubjects: number;
 }
 
-export async function run(manifestInputs: string[], scenariosPath: string): Promise<EvaluationOutcome> {
+export async function run(manifestInputs: string[], scenariosPath: string, remoteUrl?: string): Promise<EvaluationOutcome> {
   const manifests: SubjectManifest[] = [];
   
   for (const input of manifestInputs) {
@@ -52,54 +53,72 @@ export async function run(manifestInputs: string[], scenariosPath: string): Prom
     throw new Error('No manifests provided');
   }
 
-  const loader = new ScenarioLoader(scenariosPath);
-  const scenarios = await loader.loadAll();
-  const executor = new ScenarioExecutor();
-  
   const subjects: SubjectResult[] = [];
   let totalPassed = 0;
   let totalFailed = 0;
 
-  for (const manifest of manifests) {
-    console.log(`\n🔍 Evaluating Subject: ${manifest.projectId}`);
-    
-    const resolver = new ScenarioResolver(scenarios);
-    const resolved = resolver.resolve(manifest);
+  if (remoteUrl) {
+    const evaluator = new RemoteEvaluator();
+    for (const manifest of manifests) {
+      console.log(`\n🌐 Delegating evaluation for: ${manifest.projectId} to ${remoteUrl}`);
+      const result = await evaluator.evaluate(manifest, remoteUrl);
+      
+      console.log(`📊 Subject Summary (${manifest.projectId}): ${result.passedCount} passed, ${result.failedCount} failed.`);
+      
+      subjects.push(result);
+      totalPassed += result.passedCount;
+      totalFailed += result.failedCount;
 
-    console.log(`🚀 qtip: Resolved ${resolved.length} scenarios for project ${manifest.projectId}\n`);
-
-    const results = [];
-    let passedCount = 0;
-    let failedCount = 0;
-
-    for (const scenario of resolved) {
-      process.stdout.write(`  - Executing ${scenario.id}: ${scenario.name}... `);
-      const result = await executor.execute(manifest, scenario);
-      results.push(result);
-      if (result.status === 'passed') {
-        process.stdout.write('✅ PASSED\n');
-        passedCount++;
-        totalPassed++;
-      } else {
-        process.stdout.write('❌ FAILED\n');
-        result.failures.forEach((f: string) => console.log(`      └─ ${f}`));
-        failedCount++;
-        totalFailed++;
+      if (process.env.GITHUB_STEP_SUMMARY) {
+        generateSummary(manifest.projectId, result.results);
       }
     }
-
-    console.log(`\n📊 Subject Summary (${manifest.projectId}): ${passedCount} passed, ${failedCount} failed, ${resolved.length} total.`);
+  } else {
+    const loader = new ScenarioLoader(scenariosPath);
+    const scenarios = await loader.loadAll();
+    const executor = new ScenarioExecutor();
     
-    subjects.push({
-      projectId: manifest.projectId,
-      results,
-      passedCount,
-      failedCount
-    });
+    for (const manifest of manifests) {
+      console.log(`\n🔍 Evaluating Subject: ${manifest.projectId}`);
+      
+      const resolver = new ScenarioResolver(scenarios);
+      const resolved = resolver.resolve(manifest);
 
-    // Generate GitHub Step Summary if running in GH Actions
-    if (process.env.GITHUB_STEP_SUMMARY) {
-      generateSummary(manifest.projectId, results);
+      console.log(`🚀 qtip: Resolved ${resolved.length} scenarios for project ${manifest.projectId}\n`);
+
+      const results = [];
+      let passedCount = 0;
+      let failedCount = 0;
+
+      for (const scenario of resolved) {
+        process.stdout.write(`  - Executing ${scenario.id}: ${scenario.name}... `);
+        const result = await executor.execute(manifest, scenario);
+        results.push(result);
+        if (result.status === 'passed') {
+          process.stdout.write('✅ PASSED\n');
+          passedCount++;
+          totalPassed++;
+        } else {
+          process.stdout.write('❌ FAILED\n');
+          result.failures.forEach((f: string) => console.log(`      └─ ${f}`));
+          failedCount++;
+          totalFailed++;
+        }
+      }
+
+      console.log(`\n📊 Subject Summary (${manifest.projectId}): ${passedCount} passed, ${failedCount} failed, ${resolved.length} total.`);
+      
+      subjects.push({
+        projectId: manifest.projectId,
+        results,
+        passedCount,
+        failedCount
+      });
+
+      // Generate GitHub Step Summary if running in GH Actions
+      if (process.env.GITHUB_STEP_SUMMARY) {
+        generateSummary(manifest.projectId, results);
+      }
     }
   }
 
@@ -131,11 +150,15 @@ function generateSummary(projectId: string, results: any[]) {
 if (require.main === module) {
   const args = process.argv.slice(2);
   let scenariosPath = path.join(process.cwd(), 'scenarios');
+  let remoteUrl: string | undefined = undefined;
   const manifestInputs: string[] = [];
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--scenarios' && i + 1 < args.length) {
       scenariosPath = args[i + 1];
+      i++;
+    } else if (args[i] === '--remote' && i + 1 < args.length) {
+      remoteUrl = args[i + 1];
       i++;
     } else {
       manifestInputs.push(args[i]);
@@ -143,11 +166,11 @@ if (require.main === module) {
   }
 
   if (manifestInputs.length === 0) {
-    console.error('Usage: qtip-cli <manifest-json-or-path> [manifest2 ...] [--scenarios <scenarios-dir>]');
+    console.error('Usage: qtip-cli <manifest-json-or-path> [manifest2 ...] [--scenarios <scenarios-dir>] [--remote <url>]');
     process.exit(1);
   }
 
-  run(manifestInputs, scenariosPath)
+  run(manifestInputs, scenariosPath, remoteUrl)
     .then((outcome) => {
       if (outcome.totalFailed > 0) {
         process.exit(1);
@@ -158,3 +181,4 @@ if (require.main === module) {
       process.exit(1);
     });
 }
+
