@@ -9,6 +9,7 @@ export const InteractionTypeSchema = z.enum(['api', 'cli', 'ui', 'logs']);
 
 export const ApiInteractionSchema = z.object({
   type: z.literal('api'),
+  service: z.string().optional(),
   request: z.object({
     method: z.string(),
     path: z.string(),

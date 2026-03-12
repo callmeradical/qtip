@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 export const SubjectInterfaceSchema = z.object({
   type: z.enum(['api', 'cli', 'ui', 'logs']),
+  name: z.string().optional(),
   baseUrl: z.string().url().optional(),
 });
 
