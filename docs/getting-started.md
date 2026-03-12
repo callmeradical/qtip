@@ -1,20 +1,37 @@
 # Getting Started with qtip
 
-Welcome to **qtip**! This guide will help you set up the Scenario Evaluation Platform and run your first evaluation.
+Welcome to **qtip**! The most efficient way to get started is by letting an AI agent handle the boilerplate. This guide covers both the agent-assisted and manual workflows.
 
-## 1. Installation
+## 1. Onboarding with AI (Recommended)
 
-First, clone the repository and install the dependencies:
+If you use **Gemini CLI**, you can leverage the built-in **qtip-manifest-helper** skill. This skill guides the agent in creating schema-valid project manifests and test scenarios.
+
+### Install the Skill
+```bash
+gemini skills install qtip-manifest-helper.skill --scope user --consent
+/skills reload
+```
+
+### Prompting the Agent
+Once the skill is enabled, your agent becomes a **qtip** expert. You can use prompts like:
+
+- *"Generate a qtip manifest for a Node.js project called 'auth-service' that uses API validation on port 8080."*
+- *"Help me write a qtip scenario to validate that my login endpoint returns a 200 OK."*
+
+## 2. Installation
+
+If you're setting up the platform runner yourself, clone the repository and install dependencies:
 
 ```bash
 git clone https://github.com/callmeradical/qtip.git
 cd qtip
 npm install
+npm run build
 ```
 
-## 2. Initialize your Scenarios
+## 3. Initialize your Scenarios
 
-qtip looks for scenario definitions in a `scenarios/` directory (or a remote URL). Create your first scenario file:
+The runner platform evaluates your system against YAML scenarios. These are usually stored in a `scenarios/` directory.
 
 `scenarios/auth/login-success.yaml`
 ```yaml
@@ -40,7 +57,7 @@ checks:
     acceptance_criteria: AC-1
 ```
 
-## 3. Start the Runner Platform
+## 4. Start the Runner Platform
 
 Start the qtip server to listen for evaluation requests:
 
@@ -48,19 +65,15 @@ Start the qtip server to listen for evaluation requests:
 npm start
 ```
 
-The server will be running at `http://localhost:3000`.
+## 5. Submit a Subject Manifest
 
-## 4. Submit a Subject Manifest
-
-Now, you (the "Subject") need to describe yourself to qtip. You do this by submitting a **Subject Manifest**.
-
-Open a new terminal and run:
+A **Subject Manifest** is a JSON object that describes your project's identity, interfaces, and capabilities. This is what triggers the evaluation.
 
 ```bash
 curl -X POST http://localhost:3000/api/v1/evaluate \
   -H "Content-Type: application/json" \
   -d '{
-    "projectId": "my-identity-service",
+    "projectId": "identity-service",
     "environment": "qa",
     "interfaces": [
       {
@@ -72,16 +85,16 @@ curl -X POST http://localhost:3000/api/v1/evaluate \
   }'
 ```
 
-## 5. View the Results
+## 6. View the Results
 
-qtip will:
-1.  **Resolve**: Find the `AUTH-01` scenario because your manifest has the `auth` capability and an `api` interface.
-2.  **Execute**: Call `https://qa-api.example.com/login`.
-3.  **Evaluate**: Check if the response was `200`.
-4.  **Report**: Return a JSON response showing if your project passed or failed.
+When a manifest is submitted, qtip will:
+1.  **Resolve**: Match the manifest's capabilities to existing scenarios.
+2.  **Execute**: Use the appropriate adapter (API, CLI, or Logs) to interact with the subject.
+3.  **Evaluate**: Compare the results against the defined checks.
+4.  **Report**: Produce a structured JSON report mapping failures to Acceptance Criteria.
 
-## 6. Next Steps
+## 7. Next Steps
 
-- **GitHub Action**: Integrate qtip into your CI/CD pipeline using the [GitHub Action](./README.md#github-action).
-- **Agent Sandboxing**: Learn how to use qtip as a [secure evaluation loop](./agent-sandboxing.md) for AI agents.
-- **Testability Matrix**: See which [adapters and checks](./testability.md) are supported.
+- **GitHub Action**: Use qtip in CI/CD with our [GitHub Action](./README.md#github-action).
+- **Agent Sandboxing**: Learn how qtip provides a [secure evaluation loop](./agent-sandboxing.md) for AI agents.
+- **Testability Matrix**: Explore supported [adapters and checks](./testability.md).

@@ -47,24 +47,45 @@ Acceptance criteria mapping
 Structured Results (Passed/Failed)
 ```
 
-## 🛠️ Getting Started
+## 🛠️ Getting Started (Agent-First)
 
-### Prerequisites
-- Node.js (v18+)
-- Python (for documentation site)
+The most effective way to use **qtip** is to let an AI agent (like Gemini CLI) handle the boilerplate for you. This repository includes a specialized skill to automate the creation of your project's identity and test scenarios.
+
+### 1. Install the qtip Skill
+If you are using Gemini CLI, install the helper skill to your user profile:
+
+```bash
+gemini skills install qtip-manifest-helper.skill --scope user --consent
+/skills reload
+```
+
+### 2. Let the Agent Author your Manifest
+Instead of writing JSON by hand, simply ask your agent:
+> *"Help me create a qtip manifest for my project 'smith'. It's a CLI tool that builds microservices."*
+
+The agent will use the `qtip-manifest-helper` skill to:
+- Identify the correct **interfaces** (e.g., `cli`).
+- Suggest relevant **capabilities** (e.g., `build`, `scaffold`).
+- Generate a schema-valid JSON manifest.
+
+### 3. Authoring Scenarios with AI
+You can also ask the agent to author complex scenarios based on your requirements:
+> *"Create a qtip scenario that validates smith's build command. It should check that the exit code is 0 and stdout contains 'Success'."*
+
+---
+
+## 🚀 Running the Platform
 
 ### Installation
 ```bash
 npm install
+npm run build
 ```
 
-### Running the Platform
+### Starting the Server
 ```bash
 # Start the runner platform
 npm start
-
-# Development mode with hot-reload
-npm run dev
 ```
 
 ### Evaluating a Subject
