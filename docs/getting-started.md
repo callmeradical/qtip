@@ -1,6 +1,6 @@
 # Getting Started with qtip
 
-Welcome to **qtip**! The most efficient way to get started is by letting an AI agent handle the boilerplate. This guide covers both the agent-assisted and manual workflows.
+Welcome to **qtip**! The most efficient way to get started is by letting an AI agent handle the boilerplate. This guide covers both the agent-assisted and manual workflows, with a focus on the recommended **Two-Repo Strategy**.
 
 ## 1. Onboarding with AI (Recommended)
 
@@ -15,8 +15,9 @@ gemini skills install qtip-manifest-helper.skill --scope user --consent
 ### Prompting the Agent
 Once the skill is enabled, your agent becomes a **qtip** expert. You can use prompts like:
 
-- *"Generate a qtip manifest for a Node.js project called 'auth-service' that uses API validation on port 8080."*
-- *"Help me write a qtip scenario to validate that my login endpoint returns a 200 OK."*
+- *"Help me initialize a new scenario repository called 'smith-scenarios'."*
+- *"Generate a qtip manifest for my 'smith' project that points to the 'smith-scenarios' repository."*
+- *"Help me write a qtip scenario in my scenarios repo to validate that my login endpoint returns a 200 OK."*
 
 ## 2. Installation
 
@@ -29,11 +30,14 @@ npm install
 npm run build
 ```
 
-## 3. Initialize your Scenarios
+## 3. Initialize your Scenarios (The Two-Repo Strategy)
 
-The runner platform evaluates your system against YAML scenarios. These are usually stored in a `scenarios/` directory.
+For maximum security and to prevent AI agents from "cheating" by modifying tests, **qtip** recommends storing your scenarios in a separate, restricted repository.
 
-`scenarios/auth/login-success.yaml`
+1.  **Create a Scenario Repo**: e.g., `github.com/org/smith-scenarios`.
+2.  **Add Scenarios**: Create YAML files in this repo.
+
+`auth/login-success.yaml` (in your scenario repo)
 ```yaml
 id: AUTH-01
 name: "Successful Login"
@@ -67,7 +71,7 @@ npm start
 
 ## 5. Submit a Subject Manifest
 
-A **Subject Manifest** is a JSON object that describes your project's identity, interfaces, and capabilities. This is what triggers the evaluation.
+A **Subject Manifest** describes your project's identity and where its scenarios are located. Note that you can point `scenariosSource` to a local path, a git repo, or a remote URL.
 
 ```bash
 curl -X POST http://localhost:3000/api/v1/evaluate \
@@ -95,6 +99,6 @@ When a manifest is submitted, qtip will:
 
 ## 7. Next Steps
 
+- **Agent Sandboxing**: Learn why the [Two-Repo Strategy](./agent-sandboxing.md) is critical for AI-driven development.
 - **GitHub Action**: Use qtip in CI/CD with our [GitHub Action](./README.md#github-action).
-- **Agent Sandboxing**: Learn how qtip provides a [secure evaluation loop](./agent-sandboxing.md) for AI agents.
 - **Testability Matrix**: Explore supported [adapters and checks](./testability.md).
