@@ -23,6 +23,7 @@
     "cli-core",
     "operational-health",
     "ci-integration",
-    "platform-extensibility"
+    "platform-extensibility",
+    "build"
   ]
 }
