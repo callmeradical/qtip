@@ -14,6 +14,7 @@ To provide a secure, "oracle-like" feedback loop for autonomous software enginee
 ## Key Features
 - **One-Way Validation Moat:** Immutability of scenarios ensured by remote or restricted storage.
 - **Subject Manifests:** SUTs describe their capabilities and interfaces via JSON.
+- **Multi-Service Coordination:** Supports loading multiple manifests for complex, multi-service evaluations.
 - **Multi-Adapter Support:** Built-in adapters for API, CLI, and Log-based interactions.
 - **Acceptance Criteria Mapping:** Links low-level checks to high-level business requirements.
 - **CI/CD Integration:** Native GitHub Action support for deployment gating.
