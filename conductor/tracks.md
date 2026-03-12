@@ -4,5 +4,5 @@ This file tracks all major tracks for the project. Each track has its own detail
 
 ---
 
-- [x] **Track: Add multi-service support to the API adapter**
+- [~] **Track: Multi-manifest and batch evaluation support**
 *Link: [./tracks/multi_service_support_20260311/](./tracks/multi_service_support_20260311/)*
