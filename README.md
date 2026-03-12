@@ -17,8 +17,8 @@ This makes qtip the ideal **Evaluation Loop** for AI-driven development.
 ## 🚀 Key Features
 ...
 
-- **Decoupled Scenarios**: Store and version scenarios in a separate repository or directory.
-- **Manifest-Driven**: The SUT submits a "Subject Manifest" describing its capabilities and interfaces.
+- **Decoupled Scenarios**: Store and version scenarios in a separate, restricted repository (e.g., `org/smith-scenarios`) rather than the application repo.
+- **Manifest-Driven**: The SUT (e.g., `org/smith`) submits a "Subject Manifest" describing its capabilities and interfaces.
 - **Multi-Adapter Support**:
   - **API**: Validate REST/JSON responses using JSONPath.
   - **CLI**: Validate exit codes and stdout/stderr.
