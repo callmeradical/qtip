@@ -18,7 +18,6 @@
     }
   },
   "capabilities": [
-    "auth",
     "scenario-resolution",
     "evaluation",
     "cli-core",
