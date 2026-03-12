@@ -1,8 +1,8 @@
 # Implementation Plan: Implement comprehensive unit tests for the CLI adapter
 
 ## Phase 1: Research & Discovery
-- [ ] Task: Research existing test patterns in `src/tests/`.
-- [ ] Task: Analyze `src/adapters/cli-adapter.ts` for logic branches and dependencies.
+- [x] Task: Research existing test patterns in `src/tests/`. 1757338
+- [x] Task: Analyze `src/adapters/cli-adapter.ts` for logic branches and dependencies. 1757338
 
 ## Phase 2: Implementation - CLI Adapter Unit Tests
 - [ ] Task: Create `src/tests/cli-adapter.test.ts` skeleton.
