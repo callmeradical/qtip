@@ -13,5 +13,5 @@
     - [x] Implement/Refactor `src/adapters/cli-adapter.ts` to pass (if needed). 2672bca
     - [x] Write tests for stdout/stderr pattern matching. 2672bca
     - [x] Implement/Refactor `src/adapters/cli-adapter.ts` to pass (if needed). 2672bca
-- [ ] Task: Verify 100% code coverage for `cli-adapter.ts`.
+- [x] Task: Verify 100% code coverage for `cli-adapter.ts`. 15755c7
 - [ ] Task: Conductor - User Manual Verification 'Phase 2' (Protocol in workflow.md).

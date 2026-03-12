@@ -89,8 +89,42 @@ describe('CliAdapter', () => {
 
     const result = await adapter.execute(manifest, scenario);
 
+    expect(result.status).toBe(1);
     expect(result.stdout).toBe('');
     expect(result.stderr).toBe('No such file');
+  });
+
+  it('should use default values in catch block when error properties are missing', async () => {
+    const scenario: Scenario = {
+      id: 'TEST-FAIL-MINIMAL',
+      name: 'Fail Minimal Scenario',
+      applies_to: { capabilities: ['test'], interfaces: ['cli'] },
+      interaction: {
+        type: 'cli',
+        command: 'ls'
+      },
+      acceptance_criteria: [
+        { id: 'AC-1', description: 'Should fail' }
+      ],
+      checks: [
+        { type: 'status_code', expected: 1, acceptance_criteria: 'AC-1' }
+      ]
+    };
+
+    // Mock failed execution with minimal error object
+    mockedExec.mockImplementation((cmd, arg2, arg3) => {
+      const callback = typeof arg2 === 'function' ? arg2 : arg3;
+      if (callback) {
+        callback({ message: 'Unknown error' } as any, { stdout: '', stderr: '' });
+      }
+      return {} as any;
+    });
+
+    const result = await adapter.execute(manifest, scenario);
+
+    expect(result.status).toBe(1);
+    expect(result.stdout).toBe('');
+    expect(result.stderr).toBe('Unknown error');
   });
 
   it('should capture both stdout and stderr when both are populated', async () => {
