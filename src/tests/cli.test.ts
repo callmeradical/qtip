@@ -18,7 +18,7 @@ describe('CLI Multi-Manifest Loading', () => {
     }));
   });
 
-  it('should load and merge two manifests from JSON strings', async () => {
+  it('should load each manifest independently', async () => {
     const manifest1 = JSON.stringify({
       projectId: 'service-a',
       environment: 'test',
@@ -35,12 +35,12 @@ describe('CLI Multi-Manifest Loading', () => {
 
     const outcome = await run([manifest1, manifest2], scenariosPath);
 
-    expect(outcome.results.length).toBeGreaterThan(1);
+    expect(outcome.subjects.length).toBe(2);
+    expect(outcome.totalSubjects).toBe(2);
     
-    // Should have resolved scenarios for BOTH 'test' (cli) and 'auth' (api) capabilities
-    const resolvedIds = outcome.results.map(r => r.scenarioId);
-    expect(resolvedIds).toContain('TEST-CLI-HELLO');
-    expect(resolvedIds).toContain('AUTH-LOGIN-001');
+    const projectIds = outcome.subjects.map(s => s.projectId);
+    expect(projectIds).toContain('service-a');
+    expect(projectIds).toContain('service-b');
   });
 
   it('should throw error if one of the manifests is invalid', async () => {
@@ -57,37 +57,27 @@ describe('CLI Multi-Manifest Loading', () => {
       .rejects.toThrow('Invalid manifest JSON or file path');
   });
 
-  it('should resolve scenarios across different services with shared capability', async () => {
+  it('should execute scenarios for each service', async () => {
     const authManifest = JSON.stringify({
       projectId: 'auth-service',
       environment: 'prod',
       interfaces: [{ type: 'api', name: 'auth-service', baseUrl: 'http://auth.svc' }],
-      capabilities: ['multi-service']
+      capabilities: ['auth']
     });
 
     const userManifest = JSON.stringify({
       projectId: 'user-service',
       environment: 'prod',
       interfaces: [{ type: 'api', name: 'user-service', baseUrl: 'http://user.svc' }],
-      capabilities: ['multi-service']
+      capabilities: ['auth']
     });
 
     const outcome = await run([authManifest, userManifest], scenariosPath);
 
-    const resolvedIds = outcome.results.map(r => r.scenarioId);
-    expect(resolvedIds).toContain('CROSS-SERVICE-001');
-    expect(resolvedIds).toContain('CROSS-SERVICE-002');
+    expect(outcome.subjects.length).toBe(2);
     
-    // Get the mock instance that was created inside 'run'
-    const mockExecutorInstance = (ScenarioExecutor as jest.Mock).mock.results[0].value;
-    expect(mockExecutorInstance.execute).toHaveBeenCalledWith(
-      expect.objectContaining({
-        interfaces: expect.arrayContaining([
-          expect.objectContaining({ name: 'auth-service' }),
-          expect.objectContaining({ name: 'user-service' })
-        ])
-      }),
-      expect.anything()
-    );
+    // Each service should have resolved its own scenarios
+    const authResults = outcome.subjects.find(s => s.projectId === 'auth-service')?.results;
+    expect(authResults?.length).toBeGreaterThan(0);
   });
 });

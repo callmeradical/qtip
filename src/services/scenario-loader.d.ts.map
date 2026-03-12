@@ -1,1 +1,0 @@
-{"version":3,"file":"scenario-loader.d.ts","sourceRoot":"","sources":["scenario-loader.ts"],"names":[],"mappings":"AAIA,OAAO,EAAE,QAAQ,EAAkB,MAAM,oBAAoB,CAAC;AAE9D,qBAAa,cAAc;IACzB,OAAO,CAAC,eAAe,CAAS;gBAEpB,eAAe,EAAE,MAAM;IAI7B,OAAO,IAAI,OAAO,CAAC,QAAQ,EAAE,CAAC;YAOtB,WAAW;IAiBzB,OAAO,CAAC,aAAa;IAwBrB,OAAO,CAAC,gBAAgB;CAgBzB"}
