@@ -17,6 +17,7 @@ To provide a secure, "oracle-like" feedback loop for autonomous software enginee
 - **Batch & Multi-Service Evaluation:** Supports loading multiple manifests for sequential batch evaluation or complex multi-service coordination.
 - **Multi-Adapter Support:** Built-in adapters for API, CLI, and Log-based interactions.
 - **Acceptance Criteria Mapping:** Links low-level checks to high-level business requirements.
+- **Delegated Remote Evaluation:** CLI support for delegating evaluation to a central qtip server via the `--remote` flag.
 - **CI/CD Integration:** Native GitHub Action support for deployment gating.
 
 ## Strategic Goals
