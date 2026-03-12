@@ -1,0 +1,8 @@
+{
+  "track_id": "cli_client_mode_20260311",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-03-11T12:00:00Z",
+  "updated_at": "2026-03-11T12:00:00Z",
+  "description": "Implement a --remote flag for the CLI to delegate manifest evaluation to a central qtip server."
+}
