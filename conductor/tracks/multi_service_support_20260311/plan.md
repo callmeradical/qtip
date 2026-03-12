@@ -16,12 +16,13 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Update ApiAdapter for Service Resolution' (Protocol in workflow.md) a080acf
 
 ## Phase 3: Update CLI for Multi-Manifest Support
-- [ ] Task: Write Tests for CLI Multi-Manifest Loading.
-    - [ ] Create `src/tests/cli-multi-manifest.test.ts`.
-- [ ] Task: Update `qtip-cli` to accept multiple manifest paths.
-    - [ ] Modify `src/cli.ts` to process multiple manifest files.
-    - [ ] Merge interfaces and capabilities from all loaded manifests for scenario resolution.
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: Update CLI for Multi-Manifest Support' (Protocol in workflow.md)
+- [x] Task: Write Tests for CLI Multi-Manifest Loading. b5a7b90
+    - [x] Refactor `src/cli.ts` to export a `run` function for testability. b5a7b90
+    - [x] Create `src/tests/cli.test.ts` to test multi-manifest loading. b5a7b90
+- [x] Task: Update `qtip-cli` to accept multiple manifest paths. b5a7b90
+    - [x] Modify `src/cli.ts` to process multiple manifest files. b5a7b90
+    - [x] Merge interfaces and capabilities from all loaded manifests for scenario resolution. b5a7b90
+- [x] Task: Conductor - User Manual Verification 'Phase 3: Update CLI for Multi-Manifest Support' (Protocol in workflow.md) b5a7b90
 
 ## Phase 4: Full Multi-Service Scenario Validation
 - [ ] Task: Write Tests for Cross-Service Scenarios.
