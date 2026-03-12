@@ -1,0 +1,18 @@
+id: CROSS-SERVICE-002
+name: Validate user service independently
+applies_to:
+  capabilities: [multi-service]
+  interfaces: [api]
+acceptance_criteria:
+  - id: AC-2
+    description: User service is healthy
+interaction:
+  type: api
+  service: user-service
+  request:
+    method: GET
+    path: /health
+checks:
+  - type: status_code
+    expected: 200
+    acceptance_criteria: AC-2

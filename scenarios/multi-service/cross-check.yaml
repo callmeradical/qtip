@@ -1,0 +1,22 @@
+id: CROSS-SERVICE-001
+name: Validate auth then user service
+applies_to:
+  capabilities: [multi-service]
+  interfaces: [api]
+acceptance_criteria:
+  - id: AC-1
+    description: Auth service is healthy
+  - id: AC-2
+    description: User service is healthy
+interaction:
+  type: api
+  service: auth-service
+  request:
+    method: GET
+    path: /health
+checks:
+  - type: status_code
+    expected: 200
+    acceptance_criteria: AC-1
+# Note: Currently a scenario only has ONE interaction. 
+# To truly test cross-service we need TWO scenarios that apply to the same multi-service project but target different services.

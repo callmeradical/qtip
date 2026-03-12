@@ -56,4 +56,38 @@ describe('CLI Multi-Manifest Loading', () => {
     await expect(run([manifest1, manifest2], scenariosPath))
       .rejects.toThrow('Invalid manifest JSON or file path');
   });
+
+  it('should resolve scenarios across different services with shared capability', async () => {
+    const authManifest = JSON.stringify({
+      projectId: 'auth-service',
+      environment: 'prod',
+      interfaces: [{ type: 'api', name: 'auth-service', baseUrl: 'http://auth.svc' }],
+      capabilities: ['multi-service']
+    });
+
+    const userManifest = JSON.stringify({
+      projectId: 'user-service',
+      environment: 'prod',
+      interfaces: [{ type: 'api', name: 'user-service', baseUrl: 'http://user.svc' }],
+      capabilities: ['multi-service']
+    });
+
+    const outcome = await run([authManifest, userManifest], scenariosPath);
+
+    const resolvedIds = outcome.results.map(r => r.scenarioId);
+    expect(resolvedIds).toContain('CROSS-SERVICE-001');
+    expect(resolvedIds).toContain('CROSS-SERVICE-002');
+    
+    // Get the mock instance that was created inside 'run'
+    const mockExecutorInstance = (ScenarioExecutor as jest.Mock).mock.results[0].value;
+    expect(mockExecutorInstance.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        interfaces: expect.arrayContaining([
+          expect.objectContaining({ name: 'auth-service' }),
+          expect.objectContaining({ name: 'user-service' })
+        ])
+      }),
+      expect.anything()
+    );
+  });
 });
