@@ -3,8 +3,8 @@
 ## Phase 1: Remote Evaluation Service
 Create a dedicated service to handle communication with a remote qtip server.
 
-- [ ] Task: Write unit tests for `RemoteEvaluator` in `src/tests/remote-evaluator.test.ts`.
-- [ ] Task: Implement `RemoteEvaluator` class in `src/services/remote-evaluator.ts`.
+- [x] Task: Write unit tests for `RemoteEvaluator` in `src/tests/remote-evaluator.test.ts`. 584f259
+- [x] Task: Implement `RemoteEvaluator` class in `src/services/remote-evaluator.ts`. 584f259
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Remote Evaluation Service' (Protocol in workflow.md)
 
 ## Phase 2: CLI CLI Integration
