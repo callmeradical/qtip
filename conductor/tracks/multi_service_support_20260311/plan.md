@@ -8,12 +8,12 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Update Schema and Models' (Protocol in workflow.md) 19a9a06
 
 ## Phase 2: Update ApiAdapter for Service Resolution
-- [ ] Task: Write Tests for Service Resolution in `ApiAdapter`.
-    - [ ] Create `src/tests/api-adapter.test.ts` to test targeting named services.
-- [ ] Task: Update `ApiAdapter` to resolve services by name.
-    - [ ] Modify `src/adapters/api-adapter.ts` to use the `service` name from the interaction to find the correct interface.
-    - [ ] Implement fallback to the first API interface if `service` is not specified.
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Update ApiAdapter for Service Resolution' (Protocol in workflow.md)
+- [x] Task: Write Tests for Service Resolution in `ApiAdapter`. a080acf
+    - [x] Create `src/tests/api-adapter.test.ts` to test targeting named services. a080acf
+- [x] Task: Update `ApiAdapter` to resolve services by name. a080acf
+    - [x] Modify `src/adapters/api-adapter.ts` to use the `service` name from the interaction to find the correct interface. a080acf
+    - [x] Implement fallback to the first API interface if `service` is not specified. a080acf
+- [x] Task: Conductor - User Manual Verification 'Phase 2: Update ApiAdapter for Service Resolution' (Protocol in workflow.md) a080acf
 
 ## Phase 3: Update CLI for Multi-Manifest Support
 - [ ] Task: Write Tests for CLI Multi-Manifest Loading.
