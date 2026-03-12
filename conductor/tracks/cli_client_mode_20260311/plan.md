@@ -10,9 +10,9 @@ Create a dedicated service to handle communication with a remote qtip server.
 ## Phase 2: CLI CLI Integration
 Update the CLI entry point to handle the `--remote` flag and delegate evaluation.
 
-- [ ] Task: Write unit tests for CLI remote routing in `src/tests/cli-remote.test.ts`.
-- [ ] Task: Update `src/cli.ts` to support parsing `--remote <url>`.
-- [ ] Task: Refactor `run` function in `src/cli.ts` to use `RemoteEvaluator` when appropriate.
+- [x] Task: Write unit tests for CLI remote routing in `src/tests/cli-remote.test.ts`. 33c0066
+- [x] Task: Update `src/cli.ts` to support parsing `--remote <url>`. 33c0066
+- [x] Task: Refactor `run` function in `src/cli.ts` to use `RemoteEvaluator` when appropriate. 33c0066
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: CLI CLI Integration' (Protocol in workflow.md)
 
 ## Phase 3: Documentation and E2E
