@@ -71,6 +71,11 @@ class ScenarioExecutor {
                         failures.push(`Check ${check.type} failed: stdout does not contain ${check.expected} for AC ${check.acceptance_criteria}`);
                     }
                     break;
+                case 'stderr':
+                    if (evidence.stderr !== undefined && check.expected && !evidence.stderr.includes(check.expected)) {
+                        failures.push(`Check ${check.type} failed: stderr does not contain ${check.expected} for AC ${check.acceptance_criteria}`);
+                    }
+                    break;
                 case 'log_contains':
                     if (evidence.found === false) {
                         failures.push(`Check ${check.type} failed: log event not found for AC ${check.acceptance_criteria}`);

@@ -9,7 +9,7 @@ class CliAdapter {
     async execute(_manifest, scenario) {
         const interaction = scenario_1.CliInteractionSchema.parse(scenario.interaction);
         try {
-            const { stdout, stderr } = await execAsync(interaction.command);
+            const { stdout, stderr } = await execAsync(interaction.command, { timeout: 30000 });
             return {
                 status: 0,
                 stdout,

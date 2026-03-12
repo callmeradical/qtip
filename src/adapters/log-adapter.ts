@@ -1,4 +1,5 @@
 import fs from 'fs';
+import readline from 'readline';
 import { SubjectManifest } from '../models/subject-manifest';
 import { Scenario, LogInteractionSchema } from '../models/scenario';
 
@@ -23,9 +24,18 @@ export class LogAdapter {
       };
     }
 
-    const content = fs.readFileSync(logSource.path, 'utf8');
-    const lines = content.split('\n');
-    const matchedLines = lines.filter((line) => line.includes(interaction.query));
+    const matchedLines: string[] = [];
+    const fileStream = fs.createReadStream(logSource.path);
+    const rl = readline.createInterface({
+      input: fileStream,
+      crlfDelay: Infinity,
+    });
+
+    for await (const line of rl) {
+      if (line.includes(interaction.query)) {
+        matchedLines.push(line);
+      }
+    }
 
     return {
       found: matchedLines.length > 0,

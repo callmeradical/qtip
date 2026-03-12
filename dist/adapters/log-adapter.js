@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.LogAdapter = void 0;
 const fs_1 = __importDefault(require("fs"));
+const readline_1 = __importDefault(require("readline"));
 const scenario_1 = require("../models/scenario");
 class LogAdapter {
     async execute(manifest, scenario) {
@@ -19,9 +20,17 @@ class LogAdapter {
                 content: '',
             };
         }
-        const content = fs_1.default.readFileSync(logSource.path, 'utf8');
-        const lines = content.split('\n');
-        const matchedLines = lines.filter((line) => line.includes(interaction.query));
+        const matchedLines = [];
+        const fileStream = fs_1.default.createReadStream(logSource.path);
+        const rl = readline_1.default.createInterface({
+            input: fileStream,
+            crlfDelay: Infinity,
+        });
+        for await (const line of rl) {
+            if (line.includes(interaction.query)) {
+                matchedLines.push(line);
+            }
+        }
         return {
             found: matchedLines.length > 0,
             content: matchedLines.join('\n'),

@@ -19,7 +19,10 @@ router.post('/evaluate', async (req, res) => {
         const scenarios = await scenarioLoader.loadAll();
         const scenarioResolver = new scenario_resolver_1.ScenarioResolver(scenarios);
         const resolvedScenarios = scenarioResolver.resolve(manifest);
-        const results = await Promise.all(resolvedScenarios.map((scenario) => scenarioExecutor.execute(manifest, scenario)));
+        const results = [];
+        for (const scenario of resolvedScenarios) {
+            results.push(await scenarioExecutor.execute(manifest, scenario));
+        }
         const passedCount = results.filter((r) => r.status === 'passed').length;
         const failedCount = results.filter((r) => r.status !== 'passed').length;
         const failures = results

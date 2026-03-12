@@ -1,1 +1,19 @@
 {"ts":"2026-03-11T18:33:34.894357-04:00","cmd":"init","session":"ses_b15bda","ok":true,"dur_ms":76}
+{"ts":"2026-03-11T20:14:32.973783-04:00","cmd":"","ok":true,"dur_ms":2}
+{"ts":"2026-03-11T20:14:45.200421-04:00","cmd":"create","ok":false,"dur_ms":0,"err":"unknown flag: --file"}
+{"ts":"2026-03-11T20:14:50.36854-04:00","cmd":"create","ok":false,"dur_ms":2,"err":"unknown flag: --file"}
+{"ts":"2026-03-11T20:14:55.5044-04:00","cmd":"create","ok":false,"dur_ms":0,"err":"unknown flag: --file"}
+{"ts":"2026-03-11T20:15:00.652498-04:00","cmd":"create","ok":false,"dur_ms":0,"err":"unknown flag: --file"}
+{"ts":"2026-03-11T20:15:05.794528-04:00","cmd":"create","ok":false,"dur_ms":0,"err":"unknown flag: --file"}
+{"ts":"2026-03-11T20:15:17.162678-04:00","cmd":"create","flags":{"description":"File: src/adapters/log-adapter.ts. Use fs.createReadStream and readline instead of readFileSync.","label":"high"},"session":"ses_6a4e98","ok":true,"dur_ms":232}
+{"ts":"2026-03-11T20:15:22.526249-04:00","cmd":"create","flags":{"description":"File: src/adapters/cli-adapter.ts. Add a timeout to execAsync.","label":"medium"},"session":"ses_6a4e98","ok":true,"dur_ms":220}
+{"ts":"2026-03-11T20:15:27.882263-04:00","cmd":"create","flags":{"description":"File: src/services/scenario-executor.ts. Add logic for 'stderr' check type.","label":"medium"},"session":"ses_6a4e98","ok":true,"dur_ms":221}
+{"ts":"2026-03-11T20:15:33.226008-04:00","cmd":"create","flags":{"description":"File: src/services/scenario-loader.ts. Add a timeout to axios.get.","label":"medium"},"session":"ses_6a4e98","ok":true,"dur_ms":236}
+{"ts":"2026-03-11T20:15:38.593301-04:00","cmd":"create","flags":{"description":"File: src/routes/evaluation.ts. Replace Promise.all with a sequential loop.","label":"low"},"session":"ses_6a4e98","ok":true,"dur_ms":235}
+{"ts":"2026-03-11T20:16:16.879655-04:00","cmd":"close","session":"ses_6a4e98","ok":true,"dur_ms":126}
+{"ts":"2026-03-11T20:16:28.917399-04:00","cmd":"start","session":"ses_6a4e98","ok":true,"dur_ms":316}
+{"ts":"2026-03-11T20:16:38.630859-04:00","cmd":"close","session":"ses_6a4e98","ok":true,"dur_ms":122}
+{"ts":"2026-03-11T20:16:48.740328-04:00","cmd":"review","session":"ses_6a4e98","ok":true,"dur_ms":242}
+{"ts":"2026-03-11T20:16:58.438818-04:00","cmd":"approve","session":"ses_6a4e98","ok":true,"dur_ms":119}
+{"ts":"2026-03-11T20:17:12.57411-04:00","cmd":"update","ok":true,"dur_ms":2}
+{"ts":"2026-03-11T20:17:21.297721-04:00","cmd":"update","flags":{"status":"closed"},"session":"ses_6a4e98","ok":true,"dur_ms":174}

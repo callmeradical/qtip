@@ -20,7 +20,7 @@ export class ScenarioLoader {
 
   private async loadFromUrl(url: string): Promise<Scenario[]> {
     try {
-      const response = await axios.get(url);
+      const response = await axios.get(url, { timeout: 10000 });
       const data = typeof response.data === 'string' ? yaml.load(response.data) : response.data;
 
       // If the URL returns an array of scenarios
