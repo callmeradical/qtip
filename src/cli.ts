@@ -1,45 +1,52 @@
 import fs from 'fs';
 import path from 'path';
-import { SubjectManifestSchema } from './models/subject-manifest';
+import { SubjectManifest, SubjectManifestSchema } from './models/subject-manifest';
 import { ScenarioLoader } from './services/scenario-loader';
 import { ScenarioResolver } from './resolvers/scenario-resolver';
 import { ScenarioExecutor } from './services/scenario-executor';
 
-async function main() {
-  const manifestPath = process.argv[2];
-  const scenariosPath = process.argv[3] || path.join(process.cwd(), 'scenarios');
-
-  if (!manifestPath) {
-    console.error('Usage: qtip-cli <manifest-json-or-path> [scenarios-dir]');
-    process.exit(1);
-  }
-
-  let manifestData;
-  if (fs.existsSync(manifestPath)) {
-    manifestData = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-  } else {
-    try {
-      manifestData = JSON.parse(manifestPath);
-    } catch (e) {
-      console.error('Error: Invalid manifest JSON or file path.');
-      process.exit(1);
+export async function run(manifestPaths: string[], scenariosPath: string) {
+  const manifests: SubjectManifest[] = [];
+  
+  for (const manifestPath of manifestPaths) {
+    let manifestData;
+    if (fs.existsSync(manifestPath)) {
+      manifestData = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+    } else {
+      try {
+        manifestData = JSON.parse(manifestPath);
+      } catch (e) {
+        throw new Error(`Invalid manifest JSON or file path: ${manifestPath}`);
+      }
     }
+    manifests.push(SubjectManifestSchema.parse(manifestData));
   }
+
+  if (manifests.length === 0) {
+    throw new Error('No manifests provided');
+  }
+
+  // Merge manifests (simple version for now: use first one as base)
+  const primaryManifest = manifests[0];
+  const mergedManifest: SubjectManifest = {
+    ...primaryManifest,
+    interfaces: manifests.flatMap(m => m.interfaces),
+    capabilities: Array.from(new Set(manifests.flatMap(m => m.capabilities))),
+  };
 
   try {
-    const manifest = SubjectManifestSchema.parse(manifestData);
     const loader = new ScenarioLoader(scenariosPath);
     const scenarios = await loader.loadAll();
     const resolver = new ScenarioResolver(scenarios);
-    const resolved = resolver.resolve(manifest);
+    const resolved = resolver.resolve(mergedManifest);
 
-    console.log(`🚀 qtip: Resolved ${resolved.length} scenarios for project ${manifest.projectId}\n`);
+    console.log(`🚀 qtip: Resolved ${resolved.length} scenarios for project ${mergedManifest.projectId}\n`);
 
     const executor = new ScenarioExecutor();
     const results = [];
     for (const scenario of resolved) {
       process.stdout.write(`  - Executing ${scenario.id}: ${scenario.name}... `);
-      const result = await executor.execute(manifest, scenario);
+      const result = await executor.execute(mergedManifest, scenario);
       results.push(result);
       if (result.status === 'passed') {
         process.stdout.write('✅ PASSED\n');
@@ -56,15 +63,16 @@ async function main() {
 
     // Generate GitHub Step Summary if running in GH Actions
     if (process.env.GITHUB_STEP_SUMMARY) {
-      generateSummary(manifest.projectId, results);
+      generateSummary(mergedManifest.projectId, results);
     }
 
-    if (failedCount > 0) {
-      process.exit(1);
-    }
+    return {
+      results,
+      passedCount,
+      failedCount
+    };
   } catch (error: any) {
-    console.error('❌ Evaluation failed:', error.message);
-    process.exit(1);
+    throw new Error(`Evaluation failed: ${error.message}`);
   }
 }
 
@@ -83,4 +91,26 @@ function generateSummary(projectId: string, results: any[]) {
   fs.appendFileSync(summaryPath, markdown);
 }
 
-main();
+if (require.main === module) {
+  const manifestPath = process.argv[2];
+  const scenariosPath = process.argv[3] || path.join(process.cwd(), 'scenarios');
+
+  if (!manifestPath) {
+    console.error('Usage: qtip-cli <manifest-json-or-path> [scenarios-dir]');
+    process.exit(1);
+  }
+
+  // Support comma-separated manifest paths for now in CLI args
+  const manifestPaths = manifestPath.split(',');
+
+  run(manifestPaths, scenariosPath)
+    .then((outcome) => {
+      if (outcome.failedCount > 0) {
+        process.exit(1);
+      }
+    })
+    .catch((error) => {
+      console.error(`❌ ${error.message}`);
+      process.exit(1);
+    });
+}
