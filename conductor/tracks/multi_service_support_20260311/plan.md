@@ -25,7 +25,7 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 3: Update CLI for Multi-Manifest Support' (Protocol in workflow.md) b5a7b90
 
 ## Phase 4: Full Multi-Service Scenario Validation
-- [ ] Task: Write Tests for Cross-Service Scenarios.
-    - [ ] Create a complex scenario that hits two different services.
-    - [ ] Verify that the `qtip` runner correctly switches between services.
-- [ ] Task: Conductor - User Manual Verification 'Phase 4: Full Multi-Service Scenario Validation' (Protocol in workflow.md)
+- [x] Task: Write Tests for Cross-Service Scenarios. 4b7cd32
+    - [x] Create a complex scenario that hits two different services. 4b7cd32
+    - [x] Verify that the `qtip` runner correctly switches between services. 4b7cd32
+- [x] Task: Conductor - User Manual Verification 'Phase 4: Full Multi-Service Scenario Validation' (Protocol in workflow.md) 4b7cd32
