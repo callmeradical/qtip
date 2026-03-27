@@ -12,11 +12,11 @@
 - [x] Task: Implement logic to handle file change events and trigger scenario generation [cfa1e95]
 - [x] Task: Conductor - User Manual Verification 'Phase 2: File Watching' (Protocol in workflow.md) [7e86034]
 
-## Phase 3: Scenario Generation & Storage
+## Phase 3: Scenario Generation & Storage [checkpoint: b82abe1]
 - [x] Task: Implement a `ScenarioGenerator` to create YAML qtip scenarios from SUT changes [b6ad3ec]
 - [x] Task: Implement a `ScenarioStorage` service to write scenarios to the secondary repository [7bea228]
 - [x] Task: Integrate `FileWatcher`, `ScenarioGenerator`, and `ScenarioStorage` into a main `Guard` class [2212ec1]
-- [~] Task: Conductor - User Manual Verification 'Phase 3: Scenario Generation' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 3: Scenario Generation' (Protocol in workflow.md) [b82abe1]
 
 ## Phase 4: CLI & Finalization
 - [ ] Task: Create a CLI entry point for `qtip-guard` to be executed at the SUT's root
