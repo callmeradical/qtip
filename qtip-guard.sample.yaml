@@ -1,0 +1,10 @@
+# Sample configuration for qtip-guard
+secondary_repo: "./generated-scenarios"
+watched_paths:
+  - "src/**/*.ts"
+scenarios_mapping:
+  - path: "src/server.ts"
+    scenario_name: "Server Initialization"
+    acceptance_criteria:
+      - "Server starts on the configured port"
+      - "Server responds to health check endpoint"
