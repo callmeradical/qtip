@@ -7,10 +7,10 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Discovery' (Protocol in workflow.md) [61b26b8]
 
 ## Phase 2: CLI & Hook Installation
-- [~] Task: Implement a CLI command `qtip:hook install [hook-name]` (e.g., pre-commit, pre-push)
-- [ ] Task: Implement the logic to write a script to the `.git/hooks/` directory
-- [ ] Task: Ensure the installed hook script is executable (permissions)
-- [ ] Task: Conductor - User Manual Verification 'Phase 2: Hook Installation' (Protocol in workflow.md)
+- [x] Task: Implement a CLI command `qtip:hook install [hook-name]` (e.g., pre-commit, pre-push) [c63613c]
+- [x] Task: Implement the logic to write a script to the `.git/hooks/` directory [1e852fb]
+- [x] Task: Ensure the installed hook script is executable (permissions) [1e852fb]
+- [~] Task: Conductor - User Manual Verification 'Phase 2: Hook Installation' (Protocol in workflow.md)
 
 ## Phase 3: Hook Execution & Logic
 - [ ] Task: Implement the logic within the Git hook to trigger `npm run qtip:evaluate`
