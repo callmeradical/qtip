@@ -16,4 +16,19 @@ describe("ScenarioGenerator", () => {
     expect(yamlOutput).toContain("- User can login");
     expect(yamlOutput).toContain("- Invalid login fails");
   });
+
+  it("should generate a default scenario for discovered files", () => {
+    const mapping = {
+      path: "src/new-module.ts",
+      scenario_name: "new-module.ts",
+      acceptance_criteria: ["Verify the core functionality of the new module."]
+    };
+
+    const generator = new ScenarioGenerator();
+    const yamlOutput = generator.generate(mapping);
+
+    expect(yamlOutput).toContain("name: new-module.ts");
+    expect(yamlOutput).toContain("DISCOVERY TEMPLATE");
+    expect(yamlOutput).toContain("- Verify the core functionality of the new module.");
+  });
 });
