@@ -15,8 +15,8 @@
 ## Phase 3: Hook Execution & Logic
 - [x] Task: Implement the logic within the Git hook to trigger `npm run qtip:evaluate` [1e852fb]
 - [x] Task: Ensure the Git hook correctly handles exit codes to block or allow the Git action [1e852fb]
-- [~] Task: Conduct a full end-to-end test of the pre-commit hook with an evaluation run
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: Hook Execution' (Protocol in workflow.md)
+- [x] Task: Conduct a full end-to-end test of the pre-commit hook with an evaluation run [f7718a8]
+- [~] Task: Conductor - User Manual Verification 'Phase 3: Hook Execution' (Protocol in workflow.md)
 
 ## Phase 4: Final Integration & Documentation
 - [ ] Task: Finalize documentation for the new `qtip:hook` command and discovery features
