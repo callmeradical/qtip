@@ -15,8 +15,8 @@
 ## Phase 3: Scenario Generation & Storage
 - [x] Task: Implement a `ScenarioGenerator` to create YAML qtip scenarios from SUT changes [b6ad3ec]
 - [x] Task: Implement a `ScenarioStorage` service to write scenarios to the secondary repository [7bea228]
-- [~] Task: Integrate `FileWatcher`, `ScenarioGenerator`, and `ScenarioStorage` into a main `Guard` class
-- [ ] Task: Conductor - User Manual Verification 'Phase 3: Scenario Generation' (Protocol in workflow.md)
+- [x] Task: Integrate `FileWatcher`, `ScenarioGenerator`, and `ScenarioStorage` into a main `Guard` class [2212ec1]
+- [~] Task: Conductor - User Manual Verification 'Phase 3: Scenario Generation' (Protocol in workflow.md)
 
 ## Phase 4: CLI & Finalization
 - [ ] Task: Create a CLI entry point for `qtip-guard` to be executed at the SUT's root
