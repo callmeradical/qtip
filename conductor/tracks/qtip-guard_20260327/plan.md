@@ -6,11 +6,11 @@
 - [x] Task: Implement a `ConfigLoader` to read the `.yaml` configuration from the SUT's root [44961ea]
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Scaffolding' (Protocol in workflow.md) [c0236b0]
 
-## Phase 2: File Watching & SUT Integration
+## Phase 2: File Watching & SUT Integration [checkpoint: 7e86034]
 - [x] Task: Implement a `FileWatcher` service using Chokidar to monitor SUT directories [e8b07d3]
 - [x] Task: Integrate the `FileWatcher` with `ConfigLoader` to watch only the specified paths [1e3c36f]
 - [x] Task: Implement logic to handle file change events and trigger scenario generation [cfa1e95]
-- [~] Task: Conductor - User Manual Verification 'Phase 2: File Watching' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 2: File Watching' (Protocol in workflow.md) [7e86034]
 
 ## Phase 3: Scenario Generation & Storage
 - [ ] Task: Implement a `ScenarioGenerator` to create YAML qtip scenarios from SUT changes
