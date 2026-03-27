@@ -21,5 +21,5 @@
 ## Phase 4: CLI & Finalization
 - [x] Task: Create a CLI entry point for `qtip-guard` to be executed at the SUT's root [3258c72]
 - [x] Task: Conduct final integration tests for the complete guard workflow [17bef2e]
-- [~] Task: Finalize documentation and usage instructions for the guard service
-- [ ] Task: Conductor - User Manual Verification 'Phase 4: CLI & Finalization' (Protocol in workflow.md)
+- [x] Task: Finalize documentation and usage instructions for the guard service [615b5ca]
+- [~] Task: Conductor - User Manual Verification 'Phase 4: CLI & Finalization' (Protocol in workflow.md)
