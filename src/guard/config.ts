@@ -6,6 +6,8 @@ export const ScenarioMappingSchema = z.object({
   acceptance_criteria: z.array(z.string()).min(1),
 });
 
+export type ScenarioMapping = z.infer<typeof ScenarioMappingSchema>;
+
 export const GuardConfigSchema = z.object({
   secondary_repo: z.string(),
   watched_paths: z.array(z.string()),
