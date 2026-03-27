@@ -1,8 +1,0 @@
-{
-  "track_id": "qtip-guard_20260327",
-  "type": "feature",
-  "status": "new",
-  "created_at": "2026-03-27T10:00:00Z",
-  "updated_at": "2026-03-27T10:00:00Z",
-  "description": "Implementation of a 'guard' service that monitors the project's file system, reads a YAML configuration file from the SUT top-level, and generates qtip scenarios into a secondary repository specified in the configuration."
-}
