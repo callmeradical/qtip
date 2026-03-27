@@ -48,7 +48,14 @@ export class Guard {
       const yamlContent = this.generator.generate(mapping);
       this.storage.store(mapping.scenario_name, yamlContent);
     } else {
-      console.log(`No mapping found for ${relativePath}. Skipping generation.`);
+      console.log(`No mapping found for ${relativePath}. Generating default scenario...`);
+      const defaultMapping = {
+        path: relativePath,
+        scenario_name: path.basename(filePath),
+        acceptance_criteria: ["Verify the core functionality of the new module."]
+      };
+      const yamlContent = this.generator.generate(defaultMapping);
+      this.storage.store(defaultMapping.scenario_name, yamlContent);
     }
   }
 }

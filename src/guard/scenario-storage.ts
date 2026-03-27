@@ -9,7 +9,13 @@ export class ScenarioStorage {
   }
 
   store(scenarioName: string, content: string): void {
-    const fileName = `${this.normalizeName(scenarioName)}.yaml`;
+    const normalized = this.normalizeName(scenarioName);
+    const fileName = normalized.endsWith(".ts") || normalized.endsWith(".js")
+      ? normalized.replace(/\.(ts|js)$/, ".yaml")
+      : normalized.endsWith(".yaml") || normalized.endsWith(".yml")
+        ? normalized
+        : `${normalized}.yaml`;
+    
     const filePath = path.join(this.secondaryRepoPath, fileName);
     
     fs.writeFileSync(filePath, content, "utf-8");
@@ -17,6 +23,6 @@ export class ScenarioStorage {
   }
 
   private normalizeName(name: string): string {
-    return name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+    return name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9.-]/g, "");
   }
 }
