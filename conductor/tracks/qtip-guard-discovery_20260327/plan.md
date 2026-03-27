@@ -1,8 +1,8 @@
 # Implementation Plan: qtip Guard Discovery & Hook Integration
 
 ## Phase 1: Discovery Implementation
-- [ ] Task: Update `FileWatcher` to detect new file additions (Chokidar `add` event)
-- [ ] Task: Integrate `add` event in the main `Guard` class to trigger scenario generation
+- [x] Task: Update `FileWatcher` to detect new file additions (Chokidar `add` event) [825b4bc]
+- [~] Task: Integrate `add` event in the main `Guard` class to trigger scenario generation
 - [ ] Task: Implement a default scenario template for discovered files
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Discovery' (Protocol in workflow.md)
 
