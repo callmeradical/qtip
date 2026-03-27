@@ -8,8 +8,8 @@
 
 ## Phase 2: File Watching & SUT Integration
 - [x] Task: Implement a `FileWatcher` service using Chokidar to monitor SUT directories [e8b07d3]
-- [~] Task: Integrate the `FileWatcher` with `ConfigLoader` to watch only the specified paths
-- [ ] Task: Implement logic to handle file change events and trigger scenario generation
+- [x] Task: Integrate the `FileWatcher` with `ConfigLoader` to watch only the specified paths [1e3c36f]
+- [~] Task: Implement logic to handle file change events and trigger scenario generation
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: File Watching' (Protocol in workflow.md)
 
 ## Phase 3: Scenario Generation & Storage
