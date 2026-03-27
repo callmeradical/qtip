@@ -2,8 +2,8 @@
 
 ## Phase 1: Project Scaffolding & Configuration
 - [x] Task: Initialize `qtip-guard` module and install dependencies (Chokidar, Zod, etc.) [a919451]
-- [ ] Task: Define the `GuardConfig` schema using Zod for configuration validation
-- [ ] Task: Implement a `ConfigLoader` to read the `.yaml` configuration from the SUT's root
+- [x] Task: Define the `GuardConfig` schema using Zod for configuration validation [4e8ed55]
+- [~] Task: Implement a `ConfigLoader` to read the `.yaml` configuration from the SUT's root
 - [ ] Task: Conductor - User Manual Verification 'Phase 1: Scaffolding' (Protocol in workflow.md)
 
 ## Phase 2: File Watching & SUT Integration
