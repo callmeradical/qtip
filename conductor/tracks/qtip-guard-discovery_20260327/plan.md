@@ -3,8 +3,8 @@
 ## Phase 1: Discovery Implementation
 - [x] Task: Update `FileWatcher` to detect new file additions (Chokidar `add` event) [825b4bc]
 - [x] Task: Integrate `add` event in the main `Guard` class to trigger scenario generation [b82c142]
-- [~] Task: Implement a default scenario template for discovered files
-- [ ] Task: Conductor - User Manual Verification 'Phase 1: Discovery' (Protocol in workflow.md)
+- [x] Task: Implement a default scenario template for discovered files [1421faf]
+- [~] Task: Conductor - User Manual Verification 'Phase 1: Discovery' (Protocol in workflow.md)
 
 ## Phase 2: CLI & Hook Installation
 - [ ] Task: Implement a CLI command `qtip:hook install [hook-name]` (e.g., pre-commit, pre-push)
