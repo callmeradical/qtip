@@ -8,6 +8,7 @@
 - **Express:** Lightweight web framework for the evaluation API.
 - **Zod:** Robust schema validation for manifests and scenarios.
 - **Axios:** For making outbound HTTP requests within API-based scenarios.
+- **Chokidar (v3):** High-performance file system watching for the qtip-guard service.
 - **JS-YAML:** Parsing and validating scenario definitions.
 - **JSONPath Plus:** Complex extraction and assertion of API responses.
 

@@ -18,6 +18,7 @@ To provide a secure, "oracle-like" feedback loop for autonomous software enginee
 - **Multi-Adapter Support:** Built-in adapters for API, CLI, and Log-based interactions.
 - **Acceptance Criteria Mapping:** Links low-level checks to high-level business requirements.
 - **Delegated Remote Evaluation:** CLI support for delegating evaluation to a central qtip server via the `--remote` flag.
+- **qtip-guard Service:** Real-time file system monitoring for automatic scenario generation based on SUT changes.
 - **CI/CD Integration:** Native GitHub Action support for deployment gating.
 
 ## Strategic Goals
