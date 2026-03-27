@@ -13,8 +13,8 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 2: File Watching' (Protocol in workflow.md) [7e86034]
 
 ## Phase 3: Scenario Generation & Storage
-- [ ] Task: Implement a `ScenarioGenerator` to create YAML qtip scenarios from SUT changes
-- [ ] Task: Implement a `ScenarioStorage` service to write scenarios to the secondary repository
+- [x] Task: Implement a `ScenarioGenerator` to create YAML qtip scenarios from SUT changes [b6ad3ec]
+- [~] Task: Implement a `ScenarioStorage` service to write scenarios to the secondary repository
 - [ ] Task: Integrate `FileWatcher`, `ScenarioGenerator`, and `ScenarioStorage` into a main `Guard` class
 - [ ] Task: Conductor - User Manual Verification 'Phase 3: Scenario Generation' (Protocol in workflow.md)
 
