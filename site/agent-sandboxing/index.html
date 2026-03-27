@@ -13,8 +13,10 @@
       
       
       
-        <link rel="prev" href="../testability/">
+        <link rel="prev" href="../getting-started/">
       
+      
+        <link rel="next" href="../architecture/">
       
       
         
@@ -25,7 +27,7 @@
     
     
       
-        <title>Non-Functional Requirements (NFRs) - Documentation</title>
+        <title>Agent Sandboxing & Evaluation Loops - Documentation</title>
       
     
     
@@ -81,7 +83,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#non-functional-requirements-nfrs" class="md-skip">
+        <a href="#agent-sandboxing-evaluation-loops" class="md-skip">
           Skip to content
         </a>
       
@@ -117,7 +119,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Non-Functional Requirements (NFRs)
+              Agent Sandboxing &amp; Evaluation Loops
             
           </span>
         </div>
@@ -265,10 +267,37 @@
       
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../agent-sandboxing/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Sandboxing
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="././" class="md-nav__link md-nav__link--active">
         
   
   
@@ -284,6 +313,88 @@
   
 
       </a>
+      
+        
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-qtip-oracle-pattern" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The qtip Oracle Pattern
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The qtip Oracle Pattern">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-the-two-repo-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. The "Two-Repo" Strategy
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#2-one-way-validation-moat" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. One-Way Validation Moat
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-traceability-to-acceptance-criteria" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Traceability to Acceptance Criteria
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recommended-sandbox-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recommended Sandbox Architecture
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -346,37 +457,10 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Non-Functional Requirements
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="././" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../nfrs/" class="md-nav__link">
         
   
   
@@ -392,82 +476,6 @@
   
 
       </a>
-      
-        
-
-
-<nav class="md-nav md-nav--secondary" aria-label="On this page">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      On this page
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#1-performance" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Performance
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#2-scalability" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Scalability
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#3-reliability" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Reliability
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#4-security" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Security
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#5-maintainability" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5. Maintainability
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -500,54 +508,60 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#1-performance" class="md-nav__link">
+  <a href="#the-qtip-oracle-pattern" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Performance
+        The qtip Oracle Pattern
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="The qtip Oracle Pattern">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#1-the-two-repo-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. The "Two-Repo" Strategy
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#2-scalability" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#2-one-way-validation-moat" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Scalability
+        2. One-Way Validation Moat
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#3-reliability" class="md-nav__link">
+        
+          <li class="md-nav__item">
+  <a href="#3-traceability-to-acceptance-criteria" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. Reliability
+        3. Traceability to Acceptance Criteria
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#4-security" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Security
-      
-    </span>
-  </a>
+        
+      </ul>
+    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#5-maintainability" class="md-nav__link">
+  <a href="#recommended-sandbox-architecture" class="md-nav__link">
     <span class="md-ellipsis">
       
-        5. Maintainability
+        Recommended Sandbox Architecture
       
     </span>
   </a>
@@ -577,33 +591,52 @@
                 
                   
 
-<h1 id="non-functional-requirements-nfrs">Non-Functional Requirements (NFRs)<a class="headerlink" href="#non-functional-requirements-nfrs" title="Permanent link">&para;</a></h1>
-<p>The following non-functional requirements apply to the <strong>qtip</strong> Scenario Evaluation Platform.</p>
-<h2 id="1-performance">1. Performance<a class="headerlink" href="#1-performance" title="Permanent link">&para;</a></h2>
+<h1 id="agent-sandboxing-evaluation-loops">Agent Sandboxing &amp; Evaluation Loops<a class="headerlink" href="#agent-sandboxing-evaluation-loops" title="Permanent link">&para;</a></h1>
+<p>The primary mission of <strong>qtip</strong> is to provide an immutable "Oracle" for autonomous AI agents. </p>
+<p>In a traditional CI/CD pipeline, the tests live in the same repository as the code. If an autonomous agent is given write access to the repository, it has the ability to:</p>
+<ol>
+<li>Modify the application code.</li>
+<li>Modify the test code to "fix" a failing test.</li>
+</ol>
+<p>This creates a conflict of interest that compromises the integrity of the evaluation.</p>
+<h2 id="the-qtip-oracle-pattern">The qtip Oracle Pattern<a class="headerlink" href="#the-qtip-oracle-pattern" title="Permanent link">&para;</a></h2>
+<p>qtip solves this by decoupling the <strong>Subject</strong> (the agent's workspace) from the <strong>Scenarios</strong> (the source of truth).</p>
+<h3 id="1-the-two-repo-strategy">1. The "Two-Repo" Strategy<a class="headerlink" href="#1-the-two-repo-strategy" title="Permanent link">&para;</a></h3>
+<p><strong>For maximum security, you should maintain two separate repositories:</strong></p>
 <ul>
-<li><strong>Latency</strong>: Scenario resolution must complete under 100ms.</li>
-<li><strong>Overhead</strong>: Adapter execution should add minimal overhead to the actual interaction (excluding network/command execution time).</li>
+<li><strong>Application Repository (e.g., <code>org/smith</code>)</strong>: Where the AI agent has write permissions to develop features.</li>
+<li><strong>Scenario Repository (e.g., <code>org/smith-scenarios</code>)</strong>: Where the scenarios and acceptance criteria are stored. <strong>The AI agent must have NO write permissions to this repository.</strong></li>
 </ul>
-<h2 id="2-scalability">2. Scalability<a class="headerlink" href="#2-scalability" title="Permanent link">&para;</a></h2>
-<ul>
-<li><strong>Concurrency</strong>: The platform must support concurrent execution of multiple scenarios for a single subject.</li>
-<li><strong>Project Isolation</strong>: Results from different project evaluations must be isolated.</li>
-</ul>
-<h2 id="3-reliability">3. Reliability<a class="headerlink" href="#3-reliability" title="Permanent link">&para;</a></h2>
-<ul>
-<li><strong>Deterministic Execution</strong>: Given the same environment and inputs, scenario execution must be deterministic.</li>
-<li><strong>Fault Tolerance</strong>: Adapter failures (e.g., connection timeout) must be caught and reported as failures, not platform crashes.</li>
-</ul>
-<h2 id="4-security">4. Security<a class="headerlink" href="#4-security" title="Permanent link">&para;</a></h2>
-<ul>
-<li><strong>Data Protection</strong>: Sensitive data (secrets, tokens) must not be logged or stored in evidence without masking.</li>
-<li><strong>Execution Sandboxing</strong>: (Future) CLI adapter commands should run in a restricted environment.</li>
-</ul>
-<h2 id="5-maintainability">5. Maintainability<a class="headerlink" href="#5-maintainability" title="Permanent link">&para;</a></h2>
-<ul>
-<li><strong>Extensible Adapters</strong>: Adding a new adapter type requires minimal code changes to the core runner.</li>
-<li><strong>Scenario Versioning</strong>: The platform must eventually support loading different versions of scenarios based on the subject's version.</li>
-</ul>
+<h3 id="2-one-way-validation-moat">2. One-Way Validation Moat<a class="headerlink" href="#2-one-way-validation-moat" title="Permanent link">&para;</a></h3>
+<p>By storing scenarios in a <strong>restricted remote repository</strong> or at a <strong>secure URL</strong>, you create a one-way moat. When the agent triggers an evaluation, it is submitting its work to an external "Oracle." It can modify the subject, but it cannot touch the scenarios to "cheat" the test.</p>
+<h3 id="3-traceability-to-acceptance-criteria">3. Traceability to Acceptance Criteria<a class="headerlink" href="#3-traceability-to-acceptance-criteria" title="Permanent link">&para;</a></h3>
+<p>Instead of returning cryptic stack traces, qtip returns failures mapped to <strong>Acceptance Criteria (AC)</strong>. This allows the agent to understand <em>why</em> its code is failing in business terms, guiding it toward a correct implementation without giving it the power to redefine success.</p>
+<h2 id="recommended-sandbox-architecture">Recommended Sandbox Architecture<a class="headerlink" href="#recommended-sandbox-architecture" title="Permanent link">&para;</a></h2>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>+-----------------------+           +--------------------------+
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>|  Application Repo     |           |  Scenario Repo (Locked)  |
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>|  (e.g., org/smith)    |           |  (e.g., org/smith-scenarios)
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>|                       |           |                          |
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>|  - App Code           |           |  - login.yaml            |
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>|  - GitHub Actions     |           |  - build.yaml            |
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>|                       |           |                          |
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>|  [ Agent Has Write ]  |           |  [ Agent READ-ONLY ]     |
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>+-----------+-----------+           +------------+-------------+
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>            |                                    |
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>            |           +----------------+       |
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>            +----------&gt;|  qtip Runner   |&lt;------+
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>                        +----------------+
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>                                |
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>                                v
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>                        Evaluation Result
+</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>                        (Pass/Fail vs. AC)
+</span></code></pre></div>
+<p>To implement a secure sandbox:</p>
+<ol>
+<li><strong>Restrict Scenario Access</strong>: Host scenarios in a repository where the agent has no write permissions.</li>
+<li><strong>Locked Manifest</strong>: Define the Subject Manifest in a protected GitHub Action workflow file (e.g., using <code>CODEOWNERS</code>).</li>
+<li><strong>Oracle Loop</strong>: Configure the agent to use qtip-cli as its primary validation tool. </li>
+</ol>
+<p>By following this pattern, you ensure that the agent remains in a <strong>Test-Driven Development (TDD) sandbox</strong>, where the tests are the "Laws of the System" that cannot be broken or bypassed.</p>
 
 
 
@@ -643,7 +676,7 @@
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../testability/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Testability Matrix">
+          <a href="../getting-started/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Getting Started">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7M19 12H5"/></svg>
@@ -653,11 +686,27 @@
                 Previous
               </span>
               <div class="md-ellipsis">
-                Testability Matrix
+                Getting Started
               </div>
             </div>
           </a>
         
+        
+          
+          <a href="../architecture/" class="md-footer__link md-footer__link--next" aria-label="Next: Architecture">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Architecture
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </div>
+          </a>
         
       </nav>
     

@@ -21,3 +21,7 @@ Engineering teams need a standardized way to validate that software systems meet
 - **Scenario**: A reusable test definition.
 - **Adapter**: A runtime component that interacts with the subject (API, CLI, Logs).
 - **Runner**: The platform that orchestrates resolution, execution, and evaluation.
+
+## Product Planning
+
+- [PRD: Local Agent Evaluation Experience](./prd-local-agent-evaluation-experience.md)

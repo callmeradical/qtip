@@ -1,0 +1,1083 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="A new project generated from the default template project.">
+      
+      
+        <meta name="author" content="<your name here>">
+      
+      
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="zensical-0.0.24">
+    
+    
+      
+        <title>PRD: Local Agent Evaluation Experience - Documentation</title>
+      
+    
+    
+      
+        
+      
+      <link rel="stylesheet" href="../assets/stylesheets/modern/main.28978c9b.min.css">
+      
+        
+          
+        
+        <link rel="stylesheet" href="../assets/stylesheets/modern/palette.dfe2e883.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,300i,400,400i,500,500i,700,700i%7CJetBrains+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Inter";--md-code-font:"JetBrains Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,t)=>(e<<5)-e+t.charCodeAt(0)),0),__md_get=(e,t=localStorage,a=__md_scope)=>JSON.parse(t.getItem(a.pathname+"."+e)),__md_set=(e,t,a=localStorage,_=__md_scope)=>{try{a.setItem(_.pathname+"."+e,JSON.stringify(t))}catch(e){}},document.documentElement.setAttribute("data-platform",navigator.platform)</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#prd-local-agent-evaluation-experience" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="./.." title="Documentation" class="md-header__button md-logo" aria-label="Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 7v14M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-menu" viewBox="0 0 24 24"><path d="M4 5h16M4 12h16M4 19h16"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              PRD: Local Agent Evaluation Experience
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="none" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-moon" viewBox="0 0 24 24"><path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-search" viewBox="0 0 24 24"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog" aria-label="Search">
+  <button type="button" class="md-search__button">
+    Search
+  </button>
+</div>
+      
+    
+    <div class="md-header__source">
+      
+    </div>
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="./.." title="Documentation" class="md-nav__button md-logo" aria-label="Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-book-open" viewBox="0 0 24 24"><path d="M12 7v14M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>
+
+    </a>
+    Documentation
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="./.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../agent-sandboxing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Agent Sandboxing
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../testability/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Testability Matrix
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../nfrs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Non-Functional Requirements
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-problem-statement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Problem Statement
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-objective" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Objective
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-users" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Users
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-goals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Goals
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-non-goals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Non-Goals
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-experience-principles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Experience Principles
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-user-stories-and-acceptance-criteria" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. User Stories and Acceptance Criteria
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. User Stories and Acceptance Criteria">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#us-001-developer-runs-qtip-locally-in-standalone-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        US-001: Developer runs qtip locally in standalone mode
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#us-002-agent-uses-qtip-as-a-deterministic-quality-gate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        US-002: Agent uses qtip as a deterministic quality gate
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#us-003-platform-engineer-runs-delegated-local-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        US-003: Platform engineer runs delegated local mode
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#us-004-secrets-stay-safe-in-delegated-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        US-004: Secrets stay safe in delegated mode
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-end-to-end-flows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. End-to-End Flows
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. End-to-End Flows">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#flow-a-local-standalone-evaluation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Flow A: Local standalone evaluation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#flow-b-local-delegated-evaluation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Flow B: Local delegated evaluation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-functional-requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Functional Requirements
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="9. Functional Requirements">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#fr-1-local-command-clarity" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        FR-1: Local command clarity
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fr-2-agent-invocation-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        FR-2: Agent invocation contract
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fr-3-input-validation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        FR-3: Input validation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fr-4-delegated-mode-support" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        FR-4: Delegated mode support
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fr-5-authentication-for-delegated-mode-new" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        FR-5: Authentication for delegated mode (new)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-non-functional-requirements" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Non-Functional Requirements
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#11-success-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        11. Success Metrics
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#12-required-verification-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        12. Required Verification Commands
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="12. Required Verification Commands">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#baseline-quality-checks-must-pass" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Baseline quality checks (must pass)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#us-001-verification-standalone-local-run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        US-001 verification: standalone local run
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#us-002-verification-agent-deterministic-gating" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        US-002 verification: agent deterministic gating
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#us-003-verification-delegated-local-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        US-003 verification: delegated local mode
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#us-004-verification-delegated-auth-and-token-safety-after-fr-5-implementation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        US-004 verification: delegated auth and token safety (after FR-5 implementation)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#13-mvp-scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        13. MVP Scope
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#14-acceptance-criteria" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        14. Acceptance Criteria
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#15-rollout-plan" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        15. Rollout Plan
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#16-risks-and-mitigations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        16. Risks and Mitigations
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#17-open-questions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        17. Open Questions
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+<h1 id="prd-local-agent-evaluation-experience">PRD: Local Agent Evaluation Experience<a class="headerlink" href="#prd-local-agent-evaluation-experience" title="Permanent link">&para;</a></h1>
+<h2 id="1-problem-statement">1. Problem Statement<a class="headerlink" href="#1-problem-statement" title="Permanent link">&para;</a></h2>
+<p>Teams want to run qtip in local test environments and have coding agents invoke it as a reliable quality gate. Today, the core flow works, but the experience is fragmented across commands, docs, and setup steps. This causes confusion about the fastest path from "agent made a change" to "qtip pass/fail decision."</p>
+<h2 id="2-objective">2. Objective<a class="headerlink" href="#2-objective" title="Permanent link">&para;</a></h2>
+<p>Deliver a clear, low-friction local workflow where:</p>
+<ul>
+<li>a developer can run qtip in less than 5 minutes from clone,</li>
+<li>an agent can invoke qtip with deterministic behavior,</li>
+<li>pass/fail output is easy for both humans and automation to consume.</li>
+</ul>
+<h2 id="3-users">3. Users<a class="headerlink" href="#3-users" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Platform engineer: defines quality gates and wants predictable execution.</li>
+<li>Application developer: wants quick local validation before pushing.</li>
+<li>AI agent operator: wants an agent to run qtip and act on failures.</li>
+</ul>
+<h2 id="4-goals">4. Goals<a class="headerlink" href="#4-goals" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Make local qtip invocation obvious and repeatable.</li>
+<li>Keep agent contract stable (inputs, outputs, exit codes).</li>
+<li>Support both standalone and delegated (remote server) local modes.</li>
+<li>Provide actionable failures tied to scenario/check context.</li>
+</ul>
+<h2 id="5-non-goals">5. Non-Goals<a class="headerlink" href="#5-non-goals" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Building a full UI dashboard.</li>
+<li>Replacing CI workflows.</li>
+<li>Solving cloud-scale orchestration in this phase.</li>
+</ul>
+<h2 id="6-experience-principles">6. Experience Principles<a class="headerlink" href="#6-experience-principles" title="Permanent link">&para;</a></h2>
+<ul>
+<li>One obvious path: local setup and first run should be linear.</li>
+<li>Deterministic contract: same inputs produce same machine-readable output shape.</li>
+<li>Fast feedback: users can see what failed and why in one run.</li>
+<li>Agent-friendly: command is scriptable, non-interactive, and exits consistently.</li>
+</ul>
+<h2 id="7-user-stories-and-acceptance-criteria">7. User Stories and Acceptance Criteria<a class="headerlink" href="#7-user-stories-and-acceptance-criteria" title="Permanent link">&para;</a></h2>
+<h3 id="us-001-developer-runs-qtip-locally-in-standalone-mode">US-001: Developer runs qtip locally in standalone mode<a class="headerlink" href="#us-001-developer-runs-qtip-locally-in-standalone-mode" title="Permanent link">&para;</a></h3>
+<p>As a developer, I can run qtip locally against a manifest and scenarios directory and get a pass/fail decision.</p>
+<p>Acceptance Criteria:</p>
+<ul>
+<li>AC-1.1 (positive): Given a valid manifest and matching scenarios, when I run <code>node dist/cli.js &lt;manifest&gt; --scenarios &lt;dir&gt;</code>, then qtip prints per-subject and global summaries and exits with code 0.</li>
+<li>AC-1.2 (negative): Given an invalid manifest path or malformed JSON, when I run the same command, then qtip prints a clear validation error and exits with code 1.</li>
+</ul>
+<h3 id="us-002-agent-uses-qtip-as-a-deterministic-quality-gate">US-002: Agent uses qtip as a deterministic quality gate<a class="headerlink" href="#us-002-agent-uses-qtip-as-a-deterministic-quality-gate" title="Permanent link">&para;</a></h3>
+<p>As an agent operator, I can have an agent execute qtip non-interactively and decide next actions from exit code and output.</p>
+<p>Acceptance Criteria:</p>
+<ul>
+<li>AC-2.1 (positive): Given at least one failing scenario, when an agent runs qtip, then qtip exits with code 1 and includes scenario-level failure details.</li>
+<li>AC-2.2 (negative): Given a command with missing required args, when an agent runs qtip, then qtip prints usage guidance and exits with code 1.</li>
+</ul>
+<h3 id="us-003-platform-engineer-runs-delegated-local-mode">US-003: Platform engineer runs delegated local mode<a class="headerlink" href="#us-003-platform-engineer-runs-delegated-local-mode" title="Permanent link">&para;</a></h3>
+<p>As a platform engineer, I can run qtip in delegated mode against a local qtip server to mirror centralized gating behavior.</p>
+<p>Acceptance Criteria:</p>
+<ul>
+<li>AC-3.1 (positive): Given a reachable local server, when I run <code>node dist/cli.js &lt;manifest&gt; --remote &lt;url&gt;</code>, then qtip POSTs to <code>&lt;url&gt;/evaluate</code>, prints the returned summary, and exits with the same pass/fail semantics as standalone mode.</li>
+<li>AC-3.2 (negative): Given an unreachable server or 4xx/5xx response, when I run delegated mode, then qtip prints a clear remote failure message and exits with code 1.</li>
+</ul>
+<h3 id="us-004-secrets-stay-safe-in-delegated-mode">US-004: Secrets stay safe in delegated mode<a class="headerlink" href="#us-004-secrets-stay-safe-in-delegated-mode" title="Permanent link">&para;</a></h3>
+<p>As a security-conscious operator, I can configure delegated auth without exposing tokens in output.</p>
+<p>Acceptance Criteria:</p>
+<ul>
+<li>AC-4.1 (positive): Given <code>QTIP_REMOTE_TOKEN</code> is set, when delegated mode runs, then request headers include <code>Authorization: Bearer &lt;token&gt;</code>.</li>
+<li>AC-4.2 (negative): Given request failures and verbose logs, when delegated mode errors, then the raw token value is never printed to stdout/stderr.</li>
+</ul>
+<h2 id="8-end-to-end-flows">8. End-to-End Flows<a class="headerlink" href="#8-end-to-end-flows" title="Permanent link">&para;</a></h2>
+<h3 id="flow-a-local-standalone-evaluation">Flow A: Local standalone evaluation<a class="headerlink" href="#flow-a-local-standalone-evaluation" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Install and build qtip.</li>
+<li>Create or use a manifest file.</li>
+<li>Run local evaluation command.</li>
+<li>Receive scenario-level results and global summary.</li>
+<li>Return exit code 0 (all pass) or 1 (any fail/error).</li>
+</ol>
+<h3 id="flow-b-local-delegated-evaluation">Flow B: Local delegated evaluation<a class="headerlink" href="#flow-b-local-delegated-evaluation" title="Permanent link">&para;</a></h3>
+<ol>
+<li>Start local qtip server.</li>
+<li>Run CLI with <code>--remote &lt;url&gt;</code>.</li>
+<li>CLI POSTs manifest to <code>/evaluate</code>.</li>
+<li>Receive and print summary.</li>
+<li>Return exit code 0 or 1 using same semantics as local mode.</li>
+</ol>
+<h2 id="9-functional-requirements">9. Functional Requirements<a class="headerlink" href="#9-functional-requirements" title="Permanent link">&para;</a></h2>
+<h3 id="fr-1-local-command-clarity">FR-1: Local command clarity<a class="headerlink" href="#fr-1-local-command-clarity" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Document canonical commands for:</li>
+<li>build,</li>
+<li>standalone local run,</li>
+<li>delegated local run.</li>
+</ul>
+<h3 id="fr-2-agent-invocation-contract">FR-2: Agent invocation contract<a class="headerlink" href="#fr-2-agent-invocation-contract" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Command is non-interactive.</li>
+<li>Exit code behavior is explicit and stable.</li>
+<li>Output includes per-subject and global summary.</li>
+</ul>
+<h3 id="fr-3-input-validation">FR-3: Input validation<a class="headerlink" href="#fr-3-input-validation" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Invalid manifest JSON/path fails fast with clear error text.</li>
+<li>Missing scenarios directory returns clear guidance.</li>
+</ul>
+<h3 id="fr-4-delegated-mode-support">FR-4: Delegated mode support<a class="headerlink" href="#fr-4-delegated-mode-support" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>--remote</code> posts to <code>${baseUrl}/evaluate</code>.</li>
+<li>Handles network failures and non-2xx responses with clear messages.</li>
+</ul>
+<h3 id="fr-5-authentication-for-delegated-mode-new">FR-5: Authentication for delegated mode (new)<a class="headerlink" href="#fr-5-authentication-for-delegated-mode-new" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Support optional bearer token for remote requests.</li>
+<li>Token can be provided through env var for agent-safe automation.</li>
+<li>Token is never printed in logs.</li>
+</ul>
+<h2 id="10-non-functional-requirements">10. Non-Functional Requirements<a class="headerlink" href="#10-non-functional-requirements" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Reliability: deterministic exit code contract.</li>
+<li>Security: sensitive token values are masked and never echoed.</li>
+<li>Performance: local startup + evaluation remains suitable for inner-loop use.</li>
+<li>Maintainability: no duplicated execution logic between local and remote paths.</li>
+</ul>
+<h2 id="11-success-metrics">11. Success Metrics<a class="headerlink" href="#11-success-metrics" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Time-to-first-local-run under 5 minutes for new users.</li>
+<li>At least 95% of agent-triggered runs finish without manual command correction.</li>
+<li>Reduced support questions about "which qtip command should I run locally?"</li>
+</ul>
+<h2 id="12-required-verification-commands">12. Required Verification Commands<a class="headerlink" href="#12-required-verification-commands" title="Permanent link">&para;</a></h2>
+<p>Implementation is considered complete only when each user story below is verified with the required commands and expected outcomes.</p>
+<h3 id="baseline-quality-checks-must-pass">Baseline quality checks (must pass)<a class="headerlink" href="#baseline-quality-checks-must-pass" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>npm<span class="w"> </span>run<span class="w"> </span>build
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>npm<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--<span class="w"> </span>--runInBand
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>npm<span class="w"> </span>run<span class="w"> </span>docs:build
+</span></code></pre></div>
+<h3 id="us-001-verification-standalone-local-run">US-001 verification: standalone local run<a class="headerlink" href="#us-001-verification-standalone-local-run" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># Positive path: expects exit code 0</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>node<span class="w"> </span>dist/cli.js<span class="w"> </span><span class="s1">&#39;{&quot;projectId&quot;:&quot;local-smoke&quot;,&quot;environment&quot;:&quot;local&quot;,&quot;interfaces&quot;:[{&quot;type&quot;:&quot;cli&quot;}],&quot;capabilities&quot;:[&quot;test&quot;]}&#39;</span><span class="w"> </span>--scenarios<span class="w"> </span>./scenarios<span class="p">;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;exit=</span><span class="nv">$?</span><span class="s2">&quot;</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="c1"># Negative path: expects exit code 1 with clear manifest/path error</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>node<span class="w"> </span>dist/cli.js<span class="w"> </span>./does-not-exist.json<span class="w"> </span>--scenarios<span class="w"> </span>./scenarios<span class="p">;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;exit=</span><span class="nv">$?</span><span class="s2">&quot;</span>
+</span></code></pre></div>
+<h3 id="us-002-verification-agent-deterministic-gating">US-002 verification: agent deterministic gating<a class="headerlink" href="#us-002-verification-agent-deterministic-gating" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># Negative/failure path: expects exit code 1 with scenario failure details</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>node<span class="w"> </span>dist/cli.js<span class="w"> </span><span class="s1">&#39;{&quot;projectId&quot;:&quot;agent-fail&quot;,&quot;environment&quot;:&quot;qa&quot;,&quot;interfaces&quot;:[{&quot;type&quot;:&quot;api&quot;,&quot;baseUrl&quot;:&quot;http://127.0.0.1:9&quot;}],&quot;capabilities&quot;:[&quot;auth&quot;]}&#39;</span><span class="w"> </span>--scenarios<span class="w"> </span>./scenarios<span class="p">;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;exit=</span><span class="nv">$?</span><span class="s2">&quot;</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># Missing-args path: expects usage output and exit code 1</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>node<span class="w"> </span>dist/cli.js<span class="p">;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;exit=</span><span class="nv">$?</span><span class="s2">&quot;</span>
+</span></code></pre></div>
+<h3 id="us-003-verification-delegated-local-mode">US-003 verification: delegated local mode<a class="headerlink" href="#us-003-verification-delegated-local-mode" title="Permanent link">&para;</a></h3>
+<p>Run in two terminals.</p>
+<p>Terminal A:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a>npm<span class="w"> </span>start
+</span></code></pre></div>
+<p>Terminal B:</p>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="c1"># Positive delegated path: expects same pass/fail semantics as standalone mode</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>node<span class="w"> </span>dist/cli.js<span class="w"> </span><span class="s1">&#39;{&quot;projectId&quot;:&quot;remote-smoke&quot;,&quot;environment&quot;:&quot;local&quot;,&quot;interfaces&quot;:[{&quot;type&quot;:&quot;cli&quot;}],&quot;capabilities&quot;:[&quot;test&quot;]}&#39;</span><span class="w"> </span>--remote<span class="w"> </span>http://localhost:3000/api/v1<span class="p">;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;exit=</span><span class="nv">$?</span><span class="s2">&quot;</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="c1"># Negative delegated path: expects exit code 1 with remote error message</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>node<span class="w"> </span>dist/cli.js<span class="w"> </span><span class="s1">&#39;{&quot;projectId&quot;:&quot;remote-smoke&quot;,&quot;environment&quot;:&quot;local&quot;,&quot;interfaces&quot;:[{&quot;type&quot;:&quot;cli&quot;}],&quot;capabilities&quot;:[&quot;test&quot;]}&#39;</span><span class="w"> </span>--remote<span class="w"> </span>http://localhost:3999/api/v1<span class="p">;</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;exit=</span><span class="nv">$?</span><span class="s2">&quot;</span>
+</span></code></pre></div>
+<h3 id="us-004-verification-delegated-auth-and-token-safety-after-fr-5-implementation">US-004 verification: delegated auth and token safety (after FR-5 implementation)<a class="headerlink" href="#us-004-verification-delegated-auth-and-token-safety-after-fr-5-implementation" title="Permanent link">&para;</a></h3>
+<div class="language-bash highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="nv">QTIP_REMOTE_TOKEN</span><span class="o">=</span><span class="s2">&quot;test-token&quot;</span><span class="w"> </span>npm<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--<span class="w"> </span>--runInBand<span class="w"> </span>src/tests/remote-evaluator.test.ts<span class="w"> </span>src/tests/cli-remote.test.ts
+</span></code></pre></div>
+<p>Expected outcome:</p>
+<ul>
+<li>Auth header is included when <code>QTIP_REMOTE_TOKEN</code> is set.</li>
+<li>Raw token value does not appear in logs or error output.</li>
+</ul>
+<h2 id="13-mvp-scope">13. MVP Scope<a class="headerlink" href="#13-mvp-scope" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Publish one canonical local workflow in docs.</li>
+<li>Preserve current pass/fail and summary behavior.</li>
+<li>Add delegated auth via optional bearer token env var.</li>
+<li>Add tests for auth header and token redaction behavior.</li>
+</ul>
+<h2 id="14-acceptance-criteria">14. Acceptance Criteria<a class="headerlink" href="#14-acceptance-criteria" title="Permanent link">&para;</a></h2>
+<ul>
+<li>AC-1: A user can run qtip locally using documented steps and get expected pass/fail behavior.</li>
+<li>AC-2: An agent can run qtip and reliably parse success/failure via exit code.</li>
+<li>AC-3: Delegated local mode works against a local server.</li>
+<li>AC-4: When auth token env var is set, delegated requests include bearer auth header.</li>
+<li>AC-5: Token value never appears in stdout/stderr logs.</li>
+</ul>
+<h2 id="15-rollout-plan">15. Rollout Plan<a class="headerlink" href="#15-rollout-plan" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Phase 1: Documentation updates for local and delegated local flows.</li>
+<li>Phase 2: Delegated auth support + unit/integration tests.</li>
+<li>Phase 3: Agent-focused examples and prompt templates.</li>
+</ul>
+<h2 id="16-risks-and-mitigations">16. Risks and Mitigations<a class="headerlink" href="#16-risks-and-mitigations" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Risk: command drift between docs and implementation.</li>
+<li>Mitigation: validate all documented commands in CI.</li>
+<li>Risk: token leakage in logs.</li>
+<li>Mitigation: centralized redaction and negative tests.</li>
+<li>Risk: confusion between local and delegated modes.</li>
+<li>Mitigation: side-by-side examples and decision table.</li>
+</ul>
+<h2 id="17-open-questions">17. Open Questions<a class="headerlink" href="#17-open-questions" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Should we add a <code>--format json</code> output mode for stricter agent parsing?</li>
+<li>Should auth use one env var for all remotes or support per-host config?</li>
+<li>Do we want a one-command bootstrap (<code>qtip doctor</code> or <code>qtip init</code>) in the next iteration?</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-circle-arrow-up" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2026 The authors
+
+    </div>
+  
+  
+    Made with
+    <a href="https://zensical.org/" target="_blank" rel="noopener">
+      Zensical
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      
+      <script id="__config" type="application/json">{"annotate":null,"base":"..","features":["announce.dismiss","content.code.annotate","content.code.copy","content.code.select","content.footnote.tooltips","content.tabs.link","content.tooltips","navigation.footer","navigation.indexes","navigation.instant","navigation.instant.prefetch","navigation.path","navigation.sections","navigation.top","navigation.tracking","search.highlight"],"search":"../assets/javascripts/workers/search.e2d2d235.min.js","tags":null,"translations":{"clipboard.copied":"Copied to clipboard","clipboard.copy":"Copy to clipboard","search.result.more.one":"1 more on this page","search.result.more.other":"# more on this page","search.result.none":"No matching documents","search.result.one":"1 matching document","search.result.other":"# matching documents","search.result.placeholder":"Type to start searching","search.result.term.missing":"Missing","select.version":"Select version"},"version":null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.16f8adc2.min.js"></script>
+      
+    
+  </body>
+</html>

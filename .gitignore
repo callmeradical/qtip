@@ -1,12 +1,16 @@
 # Dependencies
 node_modules/
 dist/
+*.tsbuildinfo
 
 # Logs and databases
 .todos/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Build/runtime artifacts
+.ralph/
 
 # OS files
 .DS_Store

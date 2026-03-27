@@ -17,3 +17,9 @@
 {"ts":"2026-03-11T20:16:58.438818-04:00","cmd":"approve","session":"ses_6a4e98","ok":true,"dur_ms":119}
 {"ts":"2026-03-11T20:17:12.57411-04:00","cmd":"update","ok":true,"dur_ms":2}
 {"ts":"2026-03-11T20:17:21.297721-04:00","cmd":"update","flags":{"status":"closed"},"session":"ses_6a4e98","ok":true,"dur_ms":174}
+{"ts":"2026-03-23T13:07:29.352899-04:00","cmd":"usage","flags":{"new-session":"true"},"session":"ses_0b7b3c","ok":true,"dur_ms":94}
+{"ts":"2026-03-23T13:13:11.416906-04:00","cmd":"usage","flags":{"quiet":"true"},"session":"ses_0b7b3c","ok":true,"dur_ms":99}
+{"ts":"2026-03-23T13:14:11.742926-04:00","cmd":"next","session":"ses_0b7b3c","ok":true,"dur_ms":5}
+{"ts":"2026-03-23T13:14:11.744315-04:00","cmd":"reviewable","session":"ses_0b7b3c","ok":true,"dur_ms":109}
+{"ts":"2026-03-23T13:14:11.742928-04:00","cmd":"status","session":"ses_0b7b3c","ok":true,"dur_ms":147}
+{"ts":"2026-03-23T13:24:04.592546-04:00","cmd":"usage","flags":{"quiet":"true"},"session":"ses_0b7b3c","ok":true,"dur_ms":101}
