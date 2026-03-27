@@ -15,6 +15,10 @@ export class FileWatcher {
       onChanged(path);
     });
 
+    this.watcher.on("add", (path) => {
+      onChanged(path);
+    });
+
     this.watcher.on("error", (error) => {
       console.error(`FileWatcher error: ${error}`);
     });

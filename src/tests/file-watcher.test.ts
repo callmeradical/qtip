@@ -13,11 +13,8 @@ describe("FileWatcher", () => {
   });
 
   afterEach(() => {
-    if (fs.existsSync(testFile)) {
-      fs.unlinkSync(testFile);
-    }
     if (fs.existsSync(testDir)) {
-      fs.rmdirSync(testDir);
+      fs.rmSync(testDir, { recursive: true, force: true });
     }
   });
 
@@ -34,6 +31,24 @@ describe("FileWatcher", () => {
     // Wait a bit for chokidar to ready up
     setTimeout(() => {
       fs.writeFileSync(testFile, "changed");
+    }, 100);
+  });
+
+  it("should trigger callback when a new file is added", (done) => {
+    const newFile = path.join(testDir, "new.ts");
+    const watcher = new FileWatcher([testDir]);
+
+    watcher.start(async (filePath) => {
+      if (filePath.endsWith("new.ts")) {
+        await watcher.stop();
+        if (fs.existsSync(newFile)) fs.unlinkSync(newFile);
+        done();
+      }
+    });
+
+    // Wait a bit for chokidar to ready up
+    setTimeout(() => {
+      fs.writeFileSync(newFile, "new content");
     }, 100);
   });
 });
