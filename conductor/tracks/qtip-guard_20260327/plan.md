@@ -7,8 +7,8 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 1: Scaffolding' (Protocol in workflow.md) [c0236b0]
 
 ## Phase 2: File Watching & SUT Integration
-- [ ] Task: Implement a `FileWatcher` service using Chokidar to monitor SUT directories
-- [ ] Task: Integrate the `FileWatcher` with `ConfigLoader` to watch only the specified paths
+- [x] Task: Implement a `FileWatcher` service using Chokidar to monitor SUT directories [e8b07d3]
+- [~] Task: Integrate the `FileWatcher` with `ConfigLoader` to watch only the specified paths
 - [ ] Task: Implement logic to handle file change events and trigger scenario generation
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: File Watching' (Protocol in workflow.md)
 
