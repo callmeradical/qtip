@@ -18,8 +18,8 @@
 - [x] Task: Integrate `FileWatcher`, `ScenarioGenerator`, and `ScenarioStorage` into a main `Guard` class [2212ec1]
 - [x] Task: Conductor - User Manual Verification 'Phase 3: Scenario Generation' (Protocol in workflow.md) [b82abe1]
 
-## Phase 4: CLI & Finalization
+## Phase 4: CLI & Finalization [checkpoint: fb5b2b1]
 - [x] Task: Create a CLI entry point for `qtip-guard` to be executed at the SUT's root [3258c72]
 - [x] Task: Conduct final integration tests for the complete guard workflow [17bef2e]
 - [x] Task: Finalize documentation and usage instructions for the guard service [615b5ca]
-- [~] Task: Conductor - User Manual Verification 'Phase 4: CLI & Finalization' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 4: CLI & Finalization' (Protocol in workflow.md) [fb5b2b1]
