@@ -1,13 +1,13 @@
 # Implementation Plan: qtip Guard Discovery & Hook Integration
 
-## Phase 1: Discovery Implementation
+## Phase 1: Discovery Implementation [checkpoint: 61b26b8]
 - [x] Task: Update `FileWatcher` to detect new file additions (Chokidar `add` event) [825b4bc]
 - [x] Task: Integrate `add` event in the main `Guard` class to trigger scenario generation [b82c142]
 - [x] Task: Implement a default scenario template for discovered files [1421faf]
-- [~] Task: Conductor - User Manual Verification 'Phase 1: Discovery' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 1: Discovery' (Protocol in workflow.md) [61b26b8]
 
 ## Phase 2: CLI & Hook Installation
-- [ ] Task: Implement a CLI command `qtip:hook install [hook-name]` (e.g., pre-commit, pre-push)
+- [~] Task: Implement a CLI command `qtip:hook install [hook-name]` (e.g., pre-commit, pre-push)
 - [ ] Task: Implement the logic to write a script to the `.git/hooks/` directory
 - [ ] Task: Ensure the installed hook script is executable (permissions)
 - [ ] Task: Conductor - User Manual Verification 'Phase 2: Hook Installation' (Protocol in workflow.md)
