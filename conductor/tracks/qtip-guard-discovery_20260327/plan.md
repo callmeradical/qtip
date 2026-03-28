@@ -20,5 +20,5 @@
 
 ## Phase 4: Final Integration & Documentation
 - [x] Task: Finalize documentation for the new `qtip:hook` command and discovery features [d1e3d52]
-- [~] Task: Finalize integration tests for the complete discovery and hook workflow
-- [ ] Task: Conductor - User Manual Verification 'Phase 4: CLI & Finalization' (Protocol in workflow.md)
+- [x] Task: Finalize integration tests for the complete discovery and hook workflow [83a95a7]
+- [~] Task: Conductor - User Manual Verification 'Phase 4: CLI & Finalization' (Protocol in workflow.md)
