@@ -20,3 +20,4 @@
 ## Documentation & Tooling
 - **Zensical:** Documentation builder for architecture, NFRs, and user guides.
 - **ts-node / ts-node-dev:** Development-time execution and hot-reloading.
+- **Git hooks:** Automated pre-commit/pre-push evaluation gating.
