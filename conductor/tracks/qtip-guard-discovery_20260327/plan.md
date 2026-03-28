@@ -12,13 +12,13 @@
 - [x] Task: Ensure the installed hook script is executable (permissions) [1e852fb]
 - [x] Task: Conductor - User Manual Verification 'Phase 2: Hook Installation' (Protocol in workflow.md) [a31f29b]
 
-## Phase 3: Hook Execution & Logic
+## Phase 3: Hook Execution & Logic [checkpoint: 24f78ca]
 - [x] Task: Implement the logic within the Git hook to trigger `npm run qtip:evaluate` [1e852fb]
 - [x] Task: Ensure the Git hook correctly handles exit codes to block or allow the Git action [1e852fb]
 - [x] Task: Conduct a full end-to-end test of the pre-commit hook with an evaluation run [f7718a8]
-- [~] Task: Conductor - User Manual Verification 'Phase 3: Hook Execution' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 3: Hook Execution' (Protocol in workflow.md) [24f78ca]
 
 ## Phase 4: Final Integration & Documentation
-- [ ] Task: Finalize documentation for the new `qtip:hook` command and discovery features
+- [~] Task: Finalize documentation for the new `qtip:hook` command and discovery features
 - [ ] Task: Finalize integration tests for the complete discovery and hook workflow
 - [ ] Task: Conductor - User Manual Verification 'Phase 4: CLI & Finalization' (Protocol in workflow.md)
