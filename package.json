@@ -14,7 +14,8 @@
     "docs:build": "zensical build",
     "docs:serve": "zensical serve",
     "qtip:evaluate": "ts-node src/cli.ts",
-    "qtip:guard": "ts-node src/guard/cli.ts"
+    "qtip:guard": "ts-node src/guard/cli.ts",
+    "qtip:hook": "ts-node src/guard/hook-cli.ts"
   },
   "keywords": [],
   "author": "",

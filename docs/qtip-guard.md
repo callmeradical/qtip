@@ -6,8 +6,33 @@
 
 1. **Watch**: The guard service monitors the paths specified in your configuration.
 2. **Match**: When a file changes, the guard checks if there's a corresponding mapping in the configuration.
-3. **Generate**: If a match is found, a qtip scenario (YAML) is generated, incorporating the acceptance criteria from the mapping.
-4. **Store**: The generated scenario is saved into a specified secondary repository.
+3. **Discover**: If a new file is added, the guard automatically generates a default scenario for it.
+4. **Generate**: If a match is found (or a new file is discovered), a qtip scenario (YAML) is generated.
+5. **Store**: The generated scenario is saved into a specified secondary repository.
+
+## Automatic Scenario Discovery
+
+`qtip-guard` automatically detects when new files are added to your project. For every new file that matches your `watched_paths`, a corresponding scenario is generated in the `secondary_repo` with a `[DISCOVERY TEMPLATE]` label. This allows you to start validating new features immediately.
+
+## Automated Evaluation (Git Hooks)
+
+You can integrate qtip evaluation directly into your Git workflow to ensure high-integrity changes.
+
+### Installation
+
+To install a Git hook, use the following command:
+
+```bash
+# Install a pre-commit hook
+npm run qtip:hook install pre-commit
+
+# Install a pre-push hook
+npm run qtip:hook install pre-push
+```
+
+### How it Works
+
+Once installed, the hook will run `npm run qtip:evaluate` before every commit (or push). If the evaluation fails, the Git action will be blocked, preventing broken code from entering the repository.
 
 ## Configuration
 
