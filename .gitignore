@@ -11,6 +11,8 @@ yarn-error.log*
 
 # Build/runtime artifacts
 .ralph/
+target/
+crates/**/Cargo.lock
 
 # OS files
 .DS_Store

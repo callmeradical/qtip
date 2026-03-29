@@ -1,0 +1,4 @@
+[alias]
+qg-fmt = "fmt --all -- --check"
+qg-clippy = "clippy --all-targets --all-features -- -D warnings"
+qg-test = "test --all --all-features"

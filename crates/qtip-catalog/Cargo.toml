@@ -1,0 +1,19 @@
+[package]
+name = "qtip-catalog"
+version = "0.1.0"
+edition = "2024"
+description = "Scenario catalog discovery and loading primitives for qtip"
+license = "ISC"
+
+[dependencies]
+globset = "0.4.18"
+ignore = "0.4.25"
+rayon = "1.11.0"
+serde = "1.0.228"
+serde_yaml = "0.9.34"
+thiserror = "2.0.18"
+tokio = "1.50.0"
+tracing = "0.1.44"
+
+[lints]
+workspace = true

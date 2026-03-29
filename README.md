@@ -82,6 +82,35 @@ npm install
 npm run build
 ```
 
+### Rust Catalog Workspace (US-001 scaffold)
+The repository now includes a Rust workspace member at `crates/qtip-catalog`.
+
+```bash
+# Run Rust quality gates from repo root
+npm run rust:check
+
+# Or run individual checks
+npm run rust:fmt
+npm run rust:clippy
+npm run rust:test
+```
+
+If `cargo` is missing (`cargo: command not found`), install the Rust toolchain:
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source "$HOME/.cargo/env"
+rustc --version
+cargo --version
+```
+
+If dependencies fail to resolve (for example crates.io network or index errors), retry after verifying network/proxy settings:
+
+```bash
+cargo fetch
+cargo update
+```
+
 ### CLI Usage
 You can run qtip evaluations locally or delegate them to a remote server.
 
