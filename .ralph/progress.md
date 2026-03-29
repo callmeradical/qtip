@@ -223,3 +223,38 @@ Run summary: /Users/lars/Dev/qtip/.ralph/runs/run-20260329-004512-10664-iter-6.m
   - Useful context
   - The Rust gates will quickly surface aggregation lifetime issues, and fixing them early keeps the downstream `npm run rust:check` pass straightforward.
 ---
+## [2026-03-29 01:15:47 EDT] - US-007: Add no-disk test harness with in-memory source
+Thread: ses_21c735
+Run: 20260329-004512-10664 (iteration 7)
+Run log: /Users/lars/Dev/qtip/.ralph/runs/run-20260329-004512-10664-iter-7.log
+Run summary: /Users/lars/Dev/qtip/.ralph/runs/run-20260329-004512-10664-iter-7.md
+- Guardrails reviewed: yes
+- No-commit run: false
+- Commit: e0a56ef test(catalog): add in-memory harness coverage
+- Post-commit status: `clean`
+- Verification:
+  - Command: npm run rust:check -> PASS
+  - Command: cargo fmt --all -- --check -> PASS
+  - Command: cargo clippy --all-targets --all-features -- -D warnings -> PASS
+  - Command: cargo test --all --all-features -> PASS
+  - Command: npm run build -> PASS
+- Files changed:
+  - .agents/tasks/prd-rust-catalog.json
+  - .ralph/activity.log
+  - .todos/command_usage.jsonl
+  - .todos/issues.db
+  - crates/qtip-catalog/src/lib.rs
+  - .ralph/progress.md
+- What was implemented
+  - Renamed the unit-test source double to `InMemorySource` so the no-disk adapter role is explicit across discovery/load orchestration tests.
+  - Added acceptance coverage for three in-memory files (two valid, one invalid) asserting deterministic ordered successes and exactly one validation error.
+  - Added an explicit empty-source regression test asserting empty success set and zero errors without panic.
+  - Kept existing parse/validation/ordering/error aggregation test coverage running entirely from in-memory fixtures.
+- **Learnings for future iterations:**
+  - Patterns discovered
+  - Explicitly naming test adapters (`InMemorySource`) makes PRD-to-test traceability clearer than generic mock naming.
+  - Gotchas encountered
+  - Runner metadata files (`.agents/tasks/*`, `.todos/*`, `.ralph/*`) can be modified during execution and must be committed to avoid carry-over failures.
+  - Useful context
+  - `npm run rust:check` already exercises fmt/clippy/test, but explicit cargo gate commands are still useful for separate pass/fail traceability.
+---
