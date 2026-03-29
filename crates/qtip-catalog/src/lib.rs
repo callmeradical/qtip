@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::future::Future;
 use std::path::{Component, Path, PathBuf};
 use std::pin::Pin;
@@ -10,6 +10,8 @@ use std::time::SystemTime;
 use globset::{Glob, GlobSet, GlobSetBuilder};
 use ignore::WalkBuilder;
 use rayon::prelude::*;
+use serde::Deserialize;
+use serde_yaml::Value as YamlValue;
 use tokio::sync::Semaphore;
 use tokio::task::JoinSet;
 
@@ -130,6 +132,7 @@ pub struct Scenario {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ScenarioStep {
+    pub order: usize,
     pub action: String,
     pub payload: BTreeMap<String, String>,
 }
@@ -247,6 +250,17 @@ impl CatalogError {
             details: BTreeMap::new(),
         }
     }
+
+    pub fn parse(message: impl Into<String>, path: Option<String>, source: Option<String>) -> Self {
+        Self {
+            code: CatalogErrorCode::ParseFailure,
+            message: message.into(),
+            path,
+            source,
+            stage: CatalogStage::Parse,
+            details: BTreeMap::new(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -275,6 +289,216 @@ impl<T> CatalogEnvelope<T> {
 pub type ScenarioRefEnvelope = CatalogEnvelope<ScenarioRef>;
 pub type ScenarioDocumentEnvelope = CatalogEnvelope<ScenarioDocument>;
 pub type ScenarioEnvelope = CatalogEnvelope<Scenario>;
+
+#[derive(Debug, Deserialize)]
+struct RawScenario {
+    id: Option<String>,
+    service: Option<String>,
+    steps: Option<Vec<RawScenarioStep>>,
+    assertions: Option<Vec<RawScenarioAssertion>>,
+    #[serde(default)]
+    tags: Vec<String>,
+    #[serde(default)]
+    metadata: BTreeMap<String, String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct RawScenarioStep {
+    order: Option<usize>,
+    action: Option<String>,
+    #[serde(default)]
+    payload: BTreeMap<String, YamlValue>,
+}
+
+#[derive(Debug, Deserialize)]
+struct RawScenarioAssertion {
+    path: Option<String>,
+    equals: Option<YamlValue>,
+}
+
+#[derive(Debug, Clone)]
+struct LoadedScenarioDocument {
+    index: usize,
+    scenario_ref: ScenarioRef,
+    document: ScenarioDocument,
+}
+
+impl RawScenario {
+    fn into_scenario(self, scenario_ref: &ScenarioRef) -> Result<Scenario, CatalogError> {
+        let id = required_non_empty(self.id, "id", scenario_ref)?;
+        let service = required_non_empty(self.service, "service", scenario_ref)?;
+
+        let raw_steps = self.steps.ok_or_else(|| {
+            CatalogError::validation(
+                "Scenario is missing required field `steps`",
+                CatalogStage::Validate,
+                Some("steps"),
+                Some(scenario_ref.path.clone()),
+                Some(scenario_ref.source.clone()),
+            )
+        })?;
+        if raw_steps.is_empty() {
+            return Err(CatalogError::validation(
+                "Scenario field `steps` must contain at least one step",
+                CatalogStage::Validate,
+                Some("steps"),
+                Some(scenario_ref.path.clone()),
+                Some(scenario_ref.source.clone()),
+            ));
+        }
+
+        let mut steps = Vec::with_capacity(raw_steps.len());
+        let mut seen_orders = BTreeSet::new();
+        for (index, raw_step) in raw_steps.into_iter().enumerate() {
+            let order = raw_step.order.ok_or_else(|| {
+                CatalogError::validation(
+                    format!("Scenario step at index {index} is missing required field `order`"),
+                    CatalogStage::Validate,
+                    Some("steps.order"),
+                    Some(scenario_ref.path.clone()),
+                    Some(scenario_ref.source.clone()),
+                )
+            })?;
+            if order == 0 {
+                return Err(CatalogError::validation(
+                    format!("Scenario step at index {index} has non-positive `order`"),
+                    CatalogStage::Validate,
+                    Some("steps.order"),
+                    Some(scenario_ref.path.clone()),
+                    Some(scenario_ref.source.clone()),
+                ));
+            }
+            if !seen_orders.insert(order) {
+                return Err(CatalogError::validation(
+                    format!("Scenario contains duplicate step order value `{order}`"),
+                    CatalogStage::Validate,
+                    Some("steps.order"),
+                    Some(scenario_ref.path.clone()),
+                    Some(scenario_ref.source.clone()),
+                ));
+            }
+
+            let action = required_non_empty(raw_step.action, "steps.action", scenario_ref)?;
+
+            let mut payload = BTreeMap::new();
+            for (key, value) in raw_step.payload {
+                let value = yaml_scalar_to_string(value).ok_or_else(|| {
+                    CatalogError::validation(
+                        format!(
+                            "Scenario step payload value for key `{key}` must be a scalar value"
+                        ),
+                        CatalogStage::Validate,
+                        Some("steps.payload"),
+                        Some(scenario_ref.path.clone()),
+                        Some(scenario_ref.source.clone()),
+                    )
+                })?;
+                payload.insert(key, value);
+            }
+
+            steps.push(ScenarioStep {
+                order,
+                action,
+                payload,
+            });
+        }
+
+        let raw_assertions = self.assertions.ok_or_else(|| {
+            CatalogError::validation(
+                "Scenario is missing required field `assertions`",
+                CatalogStage::Validate,
+                Some("assertions"),
+                Some(scenario_ref.path.clone()),
+                Some(scenario_ref.source.clone()),
+            )
+        })?;
+        if raw_assertions.is_empty() {
+            return Err(CatalogError::validation(
+                "Scenario field `assertions` must contain at least one assertion",
+                CatalogStage::Validate,
+                Some("assertions"),
+                Some(scenario_ref.path.clone()),
+                Some(scenario_ref.source.clone()),
+            ));
+        }
+
+        let mut assertions = Vec::with_capacity(raw_assertions.len());
+        for (index, raw_assertion) in raw_assertions.into_iter().enumerate() {
+            let path = required_non_empty(raw_assertion.path, "assertions.path", scenario_ref)?;
+            let equals = raw_assertion.equals.ok_or_else(|| {
+                CatalogError::validation(
+                    format!(
+                        "Scenario assertion at index {index} is missing required field `equals`"
+                    ),
+                    CatalogStage::Validate,
+                    Some("assertions.equals"),
+                    Some(scenario_ref.path.clone()),
+                    Some(scenario_ref.source.clone()),
+                )
+            })?;
+            let equals = yaml_scalar_to_string(equals).ok_or_else(|| {
+                CatalogError::validation(
+                    format!(
+                        "Scenario assertion at index {index} field `equals` must be a scalar value"
+                    ),
+                    CatalogStage::Validate,
+                    Some("assertions.equals"),
+                    Some(scenario_ref.path.clone()),
+                    Some(scenario_ref.source.clone()),
+                )
+            })?;
+
+            assertions.push(ScenarioAssertion { path, equals });
+        }
+
+        Ok(Scenario {
+            id,
+            service,
+            steps,
+            assertions,
+            tags: self.tags,
+            metadata: self.metadata,
+        })
+    }
+}
+
+fn required_non_empty(
+    value: Option<String>,
+    field: &'static str,
+    scenario_ref: &ScenarioRef,
+) -> Result<String, CatalogError> {
+    let value = value.ok_or_else(|| {
+        CatalogError::validation(
+            format!("Scenario is missing required field `{field}`"),
+            CatalogStage::Validate,
+            Some(field),
+            Some(scenario_ref.path.clone()),
+            Some(scenario_ref.source.clone()),
+        )
+    })?;
+
+    if value.trim().is_empty() {
+        return Err(CatalogError::validation(
+            format!("Scenario field `{field}` cannot be empty"),
+            CatalogStage::Validate,
+            Some(field),
+            Some(scenario_ref.path.clone()),
+            Some(scenario_ref.source.clone()),
+        ));
+    }
+
+    Ok(value)
+}
+
+fn yaml_scalar_to_string(value: YamlValue) -> Option<String> {
+    match value {
+        YamlValue::Null => None,
+        YamlValue::Bool(value) => Some(value.to_string()),
+        YamlValue::Number(value) => Some(value.to_string()),
+        YamlValue::String(value) => Some(value),
+        _ => None,
+    }
+}
 
 pub trait ScenarioSource: Send + Sync {
     fn source_id(&self) -> &str;
@@ -355,6 +579,7 @@ pub trait ScenarioSource: Send + Sync {
 pub trait ScenarioCatalog: Send + Sync {
     fn discover(&self) -> ScenarioRefEnvelope;
     fn load<'a>(&'a self, refs: &'a [ScenarioRef]) -> BoxFuture<'a, ScenarioDocumentEnvelope>;
+    fn load_scenarios<'a>(&'a self, refs: &'a [ScenarioRef]) -> BoxFuture<'a, ScenarioEnvelope>;
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -438,16 +663,61 @@ where
         let loaded = self.read_documents_async(validated_refs).await;
         errors.extend(loaded.errors);
 
-        let parsed = Self::parse_and_validate_documents(loaded.items);
+        let validated = Self::validate_loaded_documents(loaded.items);
+        errors.extend(validated.errors);
+        let items = validated
+            .items
+            .into_iter()
+            .map(|loaded| loaded.document)
+            .collect::<Vec<ScenarioDocument>>();
+
+        ScenarioDocumentEnvelope::new(items, errors)
+    }
+
+    async fn load_scenarios_with_bounded_io(&self, refs: &[ScenarioRef]) -> ScenarioEnvelope {
+        let source_id = self.source.source_id().trim().to_string();
+        if source_id.is_empty() {
+            return ScenarioEnvelope::new(
+                Vec::new(),
+                vec![CatalogError::invalid_source_record(
+                    "Scenario source adapter is missing source_id",
+                    Some("source_id"),
+                    None,
+                    None,
+                )],
+            );
+        }
+
+        let mut validated_refs = Vec::with_capacity(refs.len());
+        let mut errors = Vec::new();
+
+        for (index, scenario_ref) in refs.iter().enumerate() {
+            match scenario_ref.validate_contract(Some(source_id.as_str())) {
+                Ok(()) => validated_refs.push((index, scenario_ref.clone())),
+                Err(error) => errors.push(error),
+            }
+        }
+
+        if validated_refs.is_empty() {
+            return ScenarioEnvelope::new(Vec::new(), errors);
+        }
+
+        let loaded = self.read_documents_async(validated_refs).await;
+        errors.extend(loaded.errors);
+
+        let validated_documents = Self::validate_loaded_documents(loaded.items);
+        errors.extend(validated_documents.errors);
+
+        let parsed = Self::parse_and_validate_scenarios(validated_documents.items);
         errors.extend(parsed.errors);
 
-        ScenarioDocumentEnvelope::new(parsed.items, errors)
+        ScenarioEnvelope::new(parsed.items, errors)
     }
 
     async fn read_documents_async(
         &self,
         refs: Vec<(usize, ScenarioRef)>,
-    ) -> CatalogEnvelope<(usize, ScenarioDocument)> {
+    ) -> CatalogEnvelope<LoadedScenarioDocument> {
         let semaphore = Arc::new(Semaphore::new(self.io_concurrency_limit));
         let mut tasks = JoinSet::new();
 
@@ -467,7 +737,11 @@ where
                 let loaded = source.load_document(&scenario_ref).await;
                 drop(permit);
 
-                loaded.map(|document| (index, document))
+                loaded.map(|document| LoadedScenarioDocument {
+                    index,
+                    scenario_ref,
+                    document,
+                })
             });
         }
 
@@ -489,30 +763,84 @@ where
         CatalogEnvelope::new(items, errors)
     }
 
-    fn parse_and_validate_documents(
-        mut documents: Vec<(usize, ScenarioDocument)>,
-    ) -> ScenarioDocumentEnvelope {
-        documents.sort_by_key(|(index, _)| *index);
+    fn validate_loaded_documents(
+        mut documents: Vec<LoadedScenarioDocument>,
+    ) -> CatalogEnvelope<LoadedScenarioDocument> {
+        documents.sort_by_key(|loaded| loaded.index);
 
         let validated = documents
             .into_par_iter()
-            .map(|(_, document)| {
-                document.validate_contract()?;
-                Ok(document)
+            .map(|loaded| {
+                if let Err(mut error) = loaded.document.validate_contract() {
+                    if error.path.is_none() {
+                        error.path = Some(loaded.scenario_ref.path.clone());
+                    }
+                    if error.source.is_none() {
+                        error.source = Some(loaded.scenario_ref.source.clone());
+                    }
+                    return Err(error);
+                }
+
+                Ok(loaded)
             })
-            .collect::<Vec<Result<ScenarioDocument, CatalogError>>>();
+            .collect::<Vec<Result<LoadedScenarioDocument, CatalogError>>>();
 
         let mut items = Vec::new();
         let mut errors = Vec::new();
 
         for result in validated {
             match result {
-                Ok(document) => items.push(document),
+                Ok(loaded) => items.push(loaded),
                 Err(error) => errors.push(error),
             }
         }
 
-        ScenarioDocumentEnvelope::new(items, errors)
+        CatalogEnvelope::new(items, errors)
+    }
+
+    fn parse_and_validate_scenarios(documents: Vec<LoadedScenarioDocument>) -> ScenarioEnvelope {
+        let parsed = documents
+            .into_par_iter()
+            .map(Self::parse_and_validate_scenario_document)
+            .collect::<Vec<Result<Scenario, CatalogError>>>();
+
+        let mut items = Vec::new();
+        let mut errors = Vec::new();
+
+        for result in parsed {
+            match result {
+                Ok(scenario) => items.push(scenario),
+                Err(error) => errors.push(error),
+            }
+        }
+
+        ScenarioEnvelope::new(items, errors)
+    }
+
+    fn parse_and_validate_scenario_document(
+        loaded: LoadedScenarioDocument,
+    ) -> Result<Scenario, CatalogError> {
+        if !matches!(loaded.document.format, ScenarioDocumentFormat::Yaml) {
+            return Err(CatalogError::parse(
+                format!(
+                    "Unsupported scenario document format `{:?}`; only YAML is supported",
+                    loaded.document.format
+                ),
+                Some(loaded.scenario_ref.path.clone()),
+                Some(loaded.scenario_ref.source.clone()),
+            ));
+        }
+
+        let parsed =
+            serde_yaml::from_str::<RawScenario>(&loaded.document.raw).map_err(|error| {
+                CatalogError::parse(
+                    format!("Failed to parse scenario YAML: {error}"),
+                    Some(loaded.scenario_ref.path.clone()),
+                    Some(loaded.scenario_ref.source.clone()),
+                )
+            })?;
+
+        parsed.into_scenario(&loaded.scenario_ref)
     }
 }
 
@@ -526,6 +854,10 @@ where
 
     fn load<'a>(&'a self, refs: &'a [ScenarioRef]) -> BoxFuture<'a, ScenarioDocumentEnvelope> {
         Box::pin(async move { self.load_with_bounded_io(refs).await })
+    }
+
+    fn load_scenarios<'a>(&'a self, refs: &'a [ScenarioRef]) -> BoxFuture<'a, ScenarioEnvelope> {
+        Box::pin(async move { self.load_scenarios_with_bounded_io(refs).await })
     }
 }
 
@@ -1305,6 +1637,229 @@ mod tests {
             .filter_map(|error| error.path.clone())
             .collect::<HashSet<String>>();
         assert_eq!(error_paths, failed_paths);
+    }
+
+    #[test]
+    fn standard_catalog_parses_valid_login_success_yaml_into_canonical_scenario() {
+        let path = "scenarios/auth/login-success.yaml".to_string();
+        let source = MockSource {
+            source_id: "memory".to_string(),
+            refs: vec![ScenarioRef {
+                id: "login-success".to_string(),
+                path: path.clone(),
+                source: "memory".to_string(),
+                fingerprint: None,
+                discovered_at: SystemTime::UNIX_EPOCH,
+            }],
+            docs: HashMap::from([(
+                path.clone(),
+                r#"
+id: login-success
+service: auth
+steps:
+  - order: 1
+    action: POST /login
+    payload:
+      username: demo
+      password: secret
+assertions:
+  - path: $.status
+    equals: 200
+tags: [smoke]
+metadata:
+  owner: auth-team
+"#
+                .to_string(),
+            )]),
+        };
+        let catalog =
+            StandardScenarioCatalog::new(source, StandardScenarioCatalogConfig::default())
+                .expect("catalog should build");
+        let runtime = tokio_runtime();
+
+        let discovered = catalog.discover();
+        assert!(discovered.errors.is_empty());
+        let parsed = runtime.block_on(catalog.load_scenarios(&discovered.items));
+
+        assert!(parsed.errors.is_empty());
+        assert_eq!(
+            parsed.items,
+            vec![Scenario {
+                id: "login-success".to_string(),
+                service: "auth".to_string(),
+                steps: vec![ScenarioStep {
+                    order: 1,
+                    action: "POST /login".to_string(),
+                    payload: BTreeMap::from([
+                        ("password".to_string(), "secret".to_string()),
+                        ("username".to_string(), "demo".to_string()),
+                    ]),
+                }],
+                assertions: vec![ScenarioAssertion {
+                    path: "$.status".to_string(),
+                    equals: "200".to_string(),
+                }],
+                tags: vec!["smoke".to_string()],
+                metadata: BTreeMap::from([("owner".to_string(), "auth-team".to_string())]),
+            }]
+        );
+    }
+
+    #[test]
+    fn malformed_yaml_returns_parse_error_with_path_and_parse_stage() {
+        let path = "scenarios/auth/malformed.yaml".to_string();
+        let source = MockSource {
+            source_id: "memory".to_string(),
+            refs: vec![ScenarioRef {
+                id: "malformed".to_string(),
+                path: path.clone(),
+                source: "memory".to_string(),
+                fingerprint: None,
+                discovered_at: SystemTime::UNIX_EPOCH,
+            }],
+            docs: HashMap::from([(
+                path.clone(),
+                "id: malformed\nservice: auth\nsteps: [\nassertions:\n  - path: $.status\n    equals: 200\n"
+                    .to_string(),
+            )]),
+        };
+        let catalog =
+            StandardScenarioCatalog::new(source, StandardScenarioCatalogConfig::default())
+                .expect("catalog should build");
+        let runtime = tokio_runtime();
+
+        let parsed = runtime.block_on(catalog.load_scenarios(&catalog.discover().items));
+
+        assert!(parsed.items.is_empty());
+        assert_eq!(parsed.errors.len(), 1);
+        assert_eq!(parsed.errors[0].code, CatalogErrorCode::ParseFailure);
+        assert_eq!(parsed.errors[0].stage, CatalogStage::Parse);
+        assert_eq!(parsed.errors[0].path.as_deref(), Some(path.as_str()));
+    }
+
+    #[test]
+    fn schema_violation_missing_steps_returns_validation_error_with_validate_stage() {
+        let path = "scenarios/auth/missing-steps.yaml".to_string();
+        let source = MockSource {
+            source_id: "memory".to_string(),
+            refs: vec![ScenarioRef {
+                id: "missing-steps".to_string(),
+                path: path.clone(),
+                source: "memory".to_string(),
+                fingerprint: None,
+                discovered_at: SystemTime::UNIX_EPOCH,
+            }],
+            docs: HashMap::from([(
+                path.clone(),
+                "id: missing-steps\nservice: auth\nassertions:\n  - path: $.status\n    equals: 200\n"
+                    .to_string(),
+            )]),
+        };
+        let catalog =
+            StandardScenarioCatalog::new(source, StandardScenarioCatalogConfig::default())
+                .expect("catalog should build");
+        let runtime = tokio_runtime();
+
+        let parsed = runtime.block_on(catalog.load_scenarios(&catalog.discover().items));
+
+        assert!(parsed.items.is_empty());
+        assert_eq!(parsed.errors.len(), 1);
+        assert_eq!(parsed.errors[0].code, CatalogErrorCode::ValidationFailure);
+        assert_eq!(parsed.errors[0].stage, CatalogStage::Validate);
+        assert_eq!(parsed.errors[0].path.as_deref(), Some(path.as_str()));
+        assert_eq!(
+            parsed.errors[0].details.get("field").map(String::as_str),
+            Some("steps")
+        );
+    }
+
+    #[test]
+    fn duplicate_step_order_returns_validation_error() {
+        let path = "scenarios/auth/duplicate-step-order.yaml".to_string();
+        let source = MockSource {
+            source_id: "memory".to_string(),
+            refs: vec![ScenarioRef {
+                id: "duplicate-step-order".to_string(),
+                path: path.clone(),
+                source: "memory".to_string(),
+                fingerprint: None,
+                discovered_at: SystemTime::UNIX_EPOCH,
+            }],
+            docs: HashMap::from([(
+                path.clone(),
+                r#"
+id: duplicate-step-order
+service: auth
+steps:
+  - order: 1
+    action: POST /login
+  - order: 1
+    action: GET /profile
+assertions:
+  - path: $.status
+    equals: 200
+"#
+                .to_string(),
+            )]),
+        };
+        let catalog =
+            StandardScenarioCatalog::new(source, StandardScenarioCatalogConfig::default())
+                .expect("catalog should build");
+        let runtime = tokio_runtime();
+
+        let parsed = runtime.block_on(catalog.load_scenarios(&catalog.discover().items));
+
+        assert!(parsed.items.is_empty());
+        assert_eq!(parsed.errors.len(), 1);
+        assert_eq!(parsed.errors[0].code, CatalogErrorCode::ValidationFailure);
+        assert_eq!(parsed.errors[0].stage, CatalogStage::Validate);
+        assert_eq!(
+            parsed.errors[0].details.get("field").map(String::as_str),
+            Some("steps.order")
+        );
+    }
+
+    #[test]
+    fn assertion_missing_equals_returns_validation_error() {
+        let path = "scenarios/auth/missing-assertion-equals.yaml".to_string();
+        let source = MockSource {
+            source_id: "memory".to_string(),
+            refs: vec![ScenarioRef {
+                id: "missing-assertion-equals".to_string(),
+                path: path.clone(),
+                source: "memory".to_string(),
+                fingerprint: None,
+                discovered_at: SystemTime::UNIX_EPOCH,
+            }],
+            docs: HashMap::from([(
+                path.clone(),
+                r#"
+id: missing-assertion-equals
+service: auth
+steps:
+  - order: 1
+    action: POST /login
+assertions:
+  - path: $.status
+"#
+                .to_string(),
+            )]),
+        };
+        let catalog =
+            StandardScenarioCatalog::new(source, StandardScenarioCatalogConfig::default())
+                .expect("catalog should build");
+        let runtime = tokio_runtime();
+
+        let parsed = runtime.block_on(catalog.load_scenarios(&catalog.discover().items));
+
+        assert!(parsed.items.is_empty());
+        assert_eq!(parsed.errors.len(), 1);
+        assert_eq!(parsed.errors[0].code, CatalogErrorCode::ValidationFailure);
+        assert_eq!(parsed.errors[0].stage, CatalogStage::Validate);
+        assert_eq!(
+            parsed.errors[0].details.get("field").map(String::as_str),
+            Some("assertions.equals")
+        );
     }
 
     fn build_refs_and_docs(
