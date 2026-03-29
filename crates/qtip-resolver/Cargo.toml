@@ -1,0 +1,12 @@
+[package]
+name = "qtip-resolver"
+version = "0.1.0"
+edition = "2024"
+description = "Scenario resolution and matching primitives for qtip"
+license = "ISC"
+
+[dependencies]
+serde = { version = "1.0.228", features = ["derive"] }
+
+[lints]
+workspace = true
