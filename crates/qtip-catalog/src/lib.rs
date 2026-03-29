@@ -1292,13 +1292,13 @@ mod tests {
     use std::time::{Duration, UNIX_EPOCH};
 
     #[derive(Debug)]
-    struct MockSource {
+    struct InMemorySource {
         source_id: String,
         refs: Vec<ScenarioRef>,
         docs: HashMap<String, String>,
     }
 
-    impl ScenarioSource for MockSource {
+    impl ScenarioSource for InMemorySource {
         fn source_id(&self) -> &str {
             &self.source_id
         }
@@ -1436,8 +1436,8 @@ mod tests {
     }
 
     #[test]
-    fn mock_source_feeds_two_in_memory_files_through_trait_methods() {
-        let source = MockSource {
+    fn in_memory_source_feeds_two_in_memory_files_through_trait_methods() {
+        let source = InMemorySource {
             source_id: "memory".to_string(),
             refs: vec![
                 ScenarioRef {
@@ -1480,7 +1480,7 @@ mod tests {
 
     #[test]
     fn trait_contract_rejects_empty_path_and_missing_source_id() {
-        let missing_source_id = MockSource {
+        let missing_source_id = InMemorySource {
             source_id: "".to_string(),
             refs: vec![ScenarioRef {
                 id: "login-success".to_string(),
@@ -1511,7 +1511,7 @@ mod tests {
             Some("source_id")
         );
 
-        let empty_path_source = MockSource {
+        let empty_path_source = InMemorySource {
             source_id: "memory".to_string(),
             refs: vec![ScenarioRef {
                 id: "login-success".to_string(),
@@ -1784,7 +1784,7 @@ mod tests {
     #[test]
     fn standard_catalog_parses_valid_login_success_yaml_into_canonical_scenario() {
         let path = "scenarios/auth/login-success.yaml".to_string();
-        let source = MockSource {
+        let source = InMemorySource {
             source_id: "memory".to_string(),
             refs: vec![ScenarioRef {
                 id: "login-success".to_string(),
@@ -1850,7 +1850,7 @@ metadata:
     #[test]
     fn malformed_yaml_returns_parse_error_with_path_and_parse_stage() {
         let path = "scenarios/auth/malformed.yaml".to_string();
-        let source = MockSource {
+        let source = InMemorySource {
             source_id: "memory".to_string(),
             refs: vec![ScenarioRef {
                 id: "malformed".to_string(),
@@ -1882,7 +1882,7 @@ metadata:
     #[test]
     fn schema_violation_missing_steps_returns_validation_error_with_validate_stage() {
         let path = "scenarios/auth/missing-steps.yaml".to_string();
-        let source = MockSource {
+        let source = InMemorySource {
             source_id: "memory".to_string(),
             refs: vec![ScenarioRef {
                 id: "missing-steps".to_string(),
@@ -1918,7 +1918,7 @@ metadata:
     #[test]
     fn duplicate_step_order_returns_validation_error() {
         let path = "scenarios/auth/duplicate-step-order.yaml".to_string();
-        let source = MockSource {
+        let source = InMemorySource {
             source_id: "memory".to_string(),
             refs: vec![ScenarioRef {
                 id: "duplicate-step-order".to_string(),
@@ -1964,7 +1964,7 @@ assertions:
     #[test]
     fn assertion_missing_equals_returns_validation_error() {
         let path = "scenarios/auth/missing-assertion-equals.yaml".to_string();
-        let source = MockSource {
+        let source = InMemorySource {
             source_id: "memory".to_string(),
             refs: vec![ScenarioRef {
                 id: "missing-assertion-equals".to_string(),
@@ -2002,6 +2002,97 @@ assertions:
             parsed.errors[0].details.get("field").map(String::as_str),
             Some("assertions.equals")
         );
+    }
+
+    #[test]
+    fn in_memory_source_with_three_files_returns_two_scenarios_and_one_error() {
+        let source = InMemorySource {
+            source_id: "memory".to_string(),
+            refs: vec![
+                ScenarioRef {
+                    id: "z-valid-ref".to_string(),
+                    path: "scenarios/auth/z-valid.yaml".to_string(),
+                    source: "memory".to_string(),
+                    fingerprint: None,
+                    discovered_at: SystemTime::UNIX_EPOCH,
+                },
+                ScenarioRef {
+                    id: "invalid-ref".to_string(),
+                    path: "scenarios/auth/m-invalid.yaml".to_string(),
+                    source: "memory".to_string(),
+                    fingerprint: None,
+                    discovered_at: SystemTime::UNIX_EPOCH,
+                },
+                ScenarioRef {
+                    id: "a-valid-ref".to_string(),
+                    path: "scenarios/auth/a-valid.yaml".to_string(),
+                    source: "memory".to_string(),
+                    fingerprint: None,
+                    discovered_at: SystemTime::UNIX_EPOCH,
+                },
+            ],
+            docs: HashMap::from([
+                (
+                    "scenarios/auth/z-valid.yaml".to_string(),
+                    valid_scenario_yaml("z-valid"),
+                ),
+                (
+                    "scenarios/auth/m-invalid.yaml".to_string(),
+                    "id: m-invalid\nservice: auth\nassertions:\n  - path: $.status\n    equals: 200\n"
+                        .to_string(),
+                ),
+                (
+                    "scenarios/auth/a-valid.yaml".to_string(),
+                    valid_scenario_yaml("a-valid"),
+                ),
+            ]),
+        };
+        let catalog =
+            StandardScenarioCatalog::new(source, StandardScenarioCatalogConfig::default())
+                .expect("catalog should build");
+        let runtime = tokio_runtime();
+        let discovered = catalog.discover();
+        assert!(discovered.errors.is_empty());
+
+        let parsed = runtime.block_on(catalog.load_scenarios(&discovered.items));
+
+        assert_eq!(
+            parsed
+                .items
+                .iter()
+                .map(|scenario| scenario.id.as_str())
+                .collect::<Vec<&str>>(),
+            vec!["a-valid", "z-valid"]
+        );
+        assert_eq!(parsed.errors.len(), 1);
+        assert_eq!(parsed.errors[0].code, CatalogErrorCode::ValidationFailure);
+        assert_eq!(parsed.errors[0].stage, CatalogStage::Validate);
+        assert_eq!(
+            parsed.errors[0].path.as_deref(),
+            Some("scenarios/auth/m-invalid.yaml")
+        );
+    }
+
+    #[test]
+    fn empty_in_memory_source_returns_empty_success_set_and_zero_errors() {
+        let source = InMemorySource {
+            source_id: "memory".to_string(),
+            refs: Vec::new(),
+            docs: HashMap::new(),
+        };
+        let catalog =
+            StandardScenarioCatalog::new(source, StandardScenarioCatalogConfig::default())
+                .expect("catalog should build");
+        let runtime = tokio_runtime();
+
+        let discovered = catalog.discover();
+        assert!(discovered.items.is_empty());
+        assert!(discovered.errors.is_empty());
+
+        let parsed = runtime.block_on(catalog.load_scenarios(&discovered.items));
+
+        assert!(parsed.items.is_empty());
+        assert!(parsed.errors.is_empty());
     }
 
     #[test]
@@ -2121,7 +2212,7 @@ assertions:
         let duplicate_path_two = "scenarios/billing/duplicate-two.yaml".to_string();
         let unique_path = "scenarios/auth/unique.yaml".to_string();
 
-        let source = MockSource {
+        let source = InMemorySource {
             source_id: "memory".to_string(),
             refs: vec![
                 ScenarioRef {
@@ -2193,7 +2284,7 @@ assertions:
 
     #[test]
     fn all_invalid_documents_return_empty_success_and_complete_error_collection() {
-        let source = MockSource {
+        let source = InMemorySource {
             source_id: "memory".to_string(),
             refs: vec![
                 ScenarioRef {

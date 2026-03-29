@@ -210,7 +210,7 @@
     {
       "id": "US-006",
       "title": "Aggregate deterministic results and conflict detection",
-      "status": "in_progress",
+      "status": "done",
       "dependsOn": [
         "US-005"
       ],
@@ -223,13 +223,13 @@
         "Negative case: if all inputs fail, response still returns complete error collection and empty success set."
       ],
       "startedAt": "2026-03-29T05:09:21.823323+00:00",
-      "completedAt": null,
-      "updatedAt": "2026-03-29T05:09:21.823484+00:00"
+      "completedAt": "2026-03-29T05:13:19.460129+00:00",
+      "updatedAt": "2026-03-29T05:13:19.459811+00:00"
     },
     {
       "id": "US-007",
       "title": "Add no-disk test harness with in-memory source",
-      "status": "open",
+      "status": "in_progress",
       "dependsOn": [
         "US-002"
       ],
@@ -239,7 +239,10 @@
         "Cover positive and negative paths for parsing, validation, ordering, and error aggregation.",
         "Example: test with three in-memory files (two valid, one invalid) returns two scenarios and one error.",
         "Negative case: empty in-memory source returns empty success set and zero errors without panic."
-      ]
+      ],
+      "startedAt": "2026-03-29T05:13:21.553583+00:00",
+      "completedAt": null,
+      "updatedAt": "2026-03-29T05:13:21.553908+00:00"
     },
     {
       "id": "US-008",
