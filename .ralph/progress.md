@@ -112,3 +112,41 @@ Run summary: /Users/lars/Dev/qtip/.ralph/runs/run-20260329-004512-10664-iter-3.m
   - Useful context
   - Running `npm run rust:check` early surfaces formatting drift quickly before clippy/test cycles.
 ---
+## [2026-03-29 01:02:58 EDT] - US-004: Build concurrent loader with bounded I/O
+Thread: codex_32722
+Run: 20260329-004512-10664 (iteration 4)
+Run log: /Users/lars/Dev/qtip/.ralph/runs/run-20260329-004512-10664-iter-4.log
+Run summary: /Users/lars/Dev/qtip/.ralph/runs/run-20260329-004512-10664-iter-4.md
+- Guardrails reviewed: yes
+- No-commit run: false
+- Commit: d405889 feat(catalog): add bounded concurrent loader
+- Post-commit status: `clean`
+- Verification:
+  - Command: npm run rust:fmt -> FAIL (initial import ordering), PASS (after `cargo fmt --all`)
+  - Command: npm run rust:clippy -> PASS
+  - Command: npm run rust:test -> PASS
+  - Command: npm run rust:check -> PASS
+  - Command: cargo fmt --all -- --check -> PASS
+  - Command: cargo clippy --all-targets --all-features -- -D warnings -> PASS
+  - Command: cargo test --all --all-features -> PASS
+  - Command: npm run build -> PASS
+- Files changed:
+  - .agents/tasks/prd-rust-catalog.json
+  - .ralph/activity.log
+  - .todos/command_usage.jsonl
+  - .todos/issues.db
+  - crates/qtip-catalog/Cargo.toml
+  - crates/qtip-catalog/src/lib.rs
+- What was implemented
+  - Added `StandardScenarioCatalog` orchestrator with `StandardScenarioCatalogConfig` and semaphore-bounded async document loading.
+  - Split loader workflow into explicit stages: async I/O read stage and CPU-bound parse/validate stage (rayon-backed document contract validation).
+  - Preserved full-error aggregation behavior so failed reads are collected as `CatalogError` while remaining loads continue.
+  - Added acceptance coverage for 500-file load at limit 100, correctness at limit 1 (with timeout guard), and partial read failures without fail-fast abort.
+- **Learnings for future iterations:**
+  - Patterns discovered
+  - Stage separation is easier to maintain when modeled as dedicated helper methods per phase (`read_documents_async` vs `parse_and_validate_documents`).
+  - Gotchas encountered
+  - `cargo qg-fmt` enforces import ordering strictly; run `cargo fmt --all` before full gate runs to avoid extra cycles.
+  - Useful context
+  - Existing run harness files (`.todos/*`, `.ralph/*`, PRD task file) can be dirty from orchestration; verify commit intent before finalizing.
+---
