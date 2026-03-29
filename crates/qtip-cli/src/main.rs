@@ -1,31 +1,51 @@
 #[allow(dead_code)]
 mod scenario;
 mod cache;
+mod install;
 mod pipeline;
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use qtip_executor::executor::EvaluationStatus;
 
 #[derive(Parser)]
 #[command(name = "qtip", about = "Scenario evaluation platform")]
 struct Cli {
-    /// Path to the subject manifest JSON file (default: auto-discover in current directory)
+    #[command(subcommand)]
+    command: Option<Commands>,
+
+    /// Path to the subject manifest JSON file (default: auto-discover)
+    #[arg(global = true)]
     manifest: Option<PathBuf>,
 
     /// Local directory containing scenario YAML files (overrides manifest)
-    #[arg(long)]
+    #[arg(long, global = true)]
     scenarios: Option<PathBuf>,
 
     /// GitHub repo containing scenarios (overrides manifest)
-    #[arg(long)]
+    #[arg(long, global = true)]
     repo: Option<String>,
 
     /// Subdirectory within the repo (overrides manifest)
-    #[arg(long)]
+    #[arg(long, global = true)]
     path: Option<String>,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    /// Install qtip skills for your AI coding agent
+    Install {
+        #[command(subcommand)]
+        what: InstallCommands,
+    },
+}
+
+#[derive(Subcommand)]
+enum InstallCommands {
+    /// Install the qtip-scenarios skill for generating scenarios from PRDs
+    Skill,
 }
 
 /// Look for a manifest file in the current directory.
@@ -48,8 +68,30 @@ fn discover_manifest() -> Option<PathBuf> {
 async fn main() -> ExitCode {
     let cli = Cli::parse();
 
+    // Handle subcommands
+    if let Some(command) = &cli.command {
+        return match command {
+            Commands::Install { what } => match what {
+                InstallCommands::Skill => {
+                    match install::install_skill() {
+                        Ok(()) => ExitCode::SUCCESS,
+                        Err(e) => {
+                            eprintln!("Error: {e}");
+                            ExitCode::FAILURE
+                        }
+                    }
+                }
+            },
+        };
+    }
+
+    // Default: run evaluation
+    run_evaluate(&cli).await
+}
+
+async fn run_evaluate(cli: &Cli) -> ExitCode {
     // Discover manifest
-    let manifest_path = match cli.manifest.or_else(discover_manifest) {
+    let manifest_path = match cli.manifest.clone().or_else(discover_manifest) {
         Some(p) => p,
         None => {
             eprintln!("No manifest found. Looked for qtip-manifest.json, qtip.json, manifest.json");
