@@ -258,3 +258,46 @@ Run summary: /Users/lars/Dev/qtip/.ralph/runs/run-20260329-004512-10664-iter-7.m
   - Useful context
   - `npm run rust:check` already exercises fmt/clippy/test, but explicit cargo gate commands are still useful for separate pass/fail traceability.
 ---
+## [2026-03-29 01:22:34 EDT] - US-008: Benchmark and document performance envelope
+Thread: ses_273803
+Run: 20260329-004512-10664 (iteration 8)
+Run log: /Users/lars/Dev/qtip/.ralph/runs/run-20260329-004512-10664-iter-8.log
+Run summary: /Users/lars/Dev/qtip/.ralph/runs/run-20260329-004512-10664-iter-8.md
+- Guardrails reviewed: yes
+- No-commit run: false
+- Commit: 0ebb85a perf(catalog): add benchmark envelope tooling
+- Post-commit status: `clean`
+- Verification:
+  - Command: npm run rust:check -> PASS
+  - Command: cargo fmt --all -- --check -> PASS
+  - Command: cargo clippy --all-targets --all-features -- -D warnings -> PASS
+  - Command: cargo test --all --all-features -> PASS
+  - Command: npm run rust:bench:catalog -> PASS
+  - Command: npm run build -> PASS
+- Files changed:
+  - .agents/tasks/prd-rust-catalog.json
+  - .ralph/activity.log
+  - .todos/command_usage.jsonl
+  - .todos/issues.db
+  - AGENTS.md
+  - README.md
+  - crates/qtip-catalog/benchmarks/fixture/scenario-template.yaml
+  - crates/qtip-catalog/benchmarks/reports/us-008-baseline.md
+  - crates/qtip-catalog/examples/benchmark_catalog.rs
+  - docs/index.md
+  - docs/rust-catalog-performance.md
+  - package.json
+  - scripts/benchmark-rust-catalog.sh
+- What was implemented
+  - Added a repeatable release-mode benchmark harness at `crates/qtip-catalog/examples/benchmark_catalog.rs` that measures deep filesystem discovery plus load/parse/validate across configurable concurrency levels.
+  - Added benchmark fixture template (`crates/qtip-catalog/benchmarks/fixture/scenario-template.yaml`) and baseline report artifact (`crates/qtip-catalog/benchmarks/reports/us-008-baseline.md`) for 1000 valid files.
+  - Added measurement script (`scripts/benchmark-rust-catalog.sh`) with baseline machine capture and regression signaling (exit code `2` + profile hints in report when target is missed).
+  - Documented performance envelope assumptions and observed throughput/latency with concurrency settings in `docs/rust-catalog-performance.md`, linked from docs index and README, and added `npm run rust:bench:catalog` operational command.
+- **Learnings for future iterations:**
+  - Patterns discovered
+    - A release-mode example binary is a lightweight, dependency-free way to capture reproducible performance envelopes with report artifacts.
+  - Gotchas encountered
+    - Clippy strict warnings (`collapsible_if`, `single_char_add_str`) can fail new benchmark tooling even when logic is correct; run `npm run rust:check` early.
+  - Useful context
+    - `scripts/benchmark-rust-catalog.sh` auto-detects baseline machine assumptions and writes a report directly consumable by docs/review workflows.
+---
