@@ -42,3 +42,4 @@
 [2026-03-29 01:07:47] Verification complete for US-005: rust checks and build passed
 [2026-03-29 01:08:29] Updated progress log for US-005 with commit and verification details
 [2026-03-29 01:08:41] Completed US-005 security/performance/regression review before final handoff
+[2026-03-29 01:08:58] Updated AGENTS.md with npm build command discovered during US-005 verification

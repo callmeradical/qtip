@@ -7,3 +7,4 @@ Use td usage -q for subsequent reads.
 
 - Rust quality gates: `npm run rust:check`
 - Individual Rust checks: `npm run rust:fmt`, `npm run rust:clippy`, `npm run rust:test`
+- TypeScript build: `npm run build`
