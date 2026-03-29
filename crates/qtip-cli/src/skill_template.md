@@ -5,11 +5,23 @@ description: Generate qtip scenario YAML files from a PRD, GitHub issue, or user
 
 # Generate qtip Scenarios
 
-Generate scenario YAML files for the qtip evaluation platform from a PRD, GitHub issue, or user story. Scenarios are the "definition of truth" that validate a software system — they live in a separate repo from the code under test.
+Generate scenario YAML files for the qtip evaluation platform from a PRD, GitHub issue, or user story.
+
+**CRITICAL**: Scenarios MUST be written to a **separate scenarios repository**, NOT to the project repo under test. This is the core security property of qtip — the "oracle pattern." The agent developing the project code cannot modify the scenarios that evaluate it. If you are currently in the project repo, you need to find or ask for the scenarios repo location before writing any files.
 
 ## Process
 
-### 1. Get the source
+### 1. Determine the scenarios repo
+
+Before anything else, establish where scenario files will be written:
+
+- Check if the project's manifest (`qtip-manifest.json`) has a `scenarios.repo` field — that's the scenarios repo (e.g. `callmeradical/scenarios`)
+- If not, ask the user: "Where is your scenarios repo? (e.g. `~/Dev/scenarios` or `owner/scenarios` on GitHub)"
+- If the scenarios repo is not cloned locally, clone it: `git clone https://github.com/<owner>/<repo>.git`
+
+All scenario files are written to `<scenarios-repo>/<project-name>/` — NEVER to the project repo itself.
+
+### 2. Get the source
 
 Ask the user for one of:
 - A GitHub issue number or URL (fetch with `gh issue view <number>`)
@@ -18,7 +30,7 @@ Ask the user for one of:
 
 If a GitHub issue, read it including comments. Extract all acceptance criteria, user stories, and testable behaviors.
 
-### 2. Get the project context
+### 3. Get the project context
 
 You need two things:
 - **The project's qtip manifest** — find `qtip-manifest.json`, `qtip.json`, or `manifest.json` in the project repo. This tells you what capabilities and interfaces the project exposes.
@@ -31,7 +43,7 @@ From the manifest, note:
 - `interfaces` — what types of interaction are available (api, cli, logs)
 - `environment` — what environment this runs in
 
-### 3. Map acceptance criteria to scenarios
+### 4. Map acceptance criteria to scenarios
 
 For each acceptance criterion or testable behavior from the source:
 
@@ -49,7 +61,7 @@ Rules:
 - API interactions need a `request` with `method` and `path` — the base URL comes from the manifest at runtime
 - Log interactions need a `query` string — the log file path comes from the manifest at runtime
 
-### 4. Present the plan
+### 5. Present the plan
 
 Before writing files, show the user a summary:
 
@@ -64,7 +76,7 @@ Ask: "Does this coverage look right? Any scenarios to add, remove, or change?"
 
 Iterate until approved.
 
-### 5. Write the scenario files
+### 6. Write the scenario files
 
 Write each scenario as a YAML file. Use this structure:
 
@@ -98,16 +110,17 @@ checks:
 
 Organize files as: `<project>/<capability>/<scenario-name>.yaml`
 
-### 6. Offer to commit
+### 7. Commit to the scenarios repo
 
-If working in the scenarios repo, offer to commit the new files:
+Commit the new files in the scenarios repo (NOT the project repo):
 
 ```
-git add <files>
+cd <scenarios-repo>
+git add <project>/<files>
 git commit -m "Add scenarios for <project> from <source>"
 ```
 
-Do NOT push without asking — the user may want to review first.
+Do NOT push without asking — the user may want to review first. Remind the user that once pushed, these scenarios become the immutable evaluation criteria for the project.
 
 ## Check type reference
 

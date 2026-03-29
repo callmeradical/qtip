@@ -7,8 +7,9 @@ mod pipeline;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use qtip_executor::executor::EvaluationStatus;
+use serde::Serialize;
 
 #[derive(Parser)]
 #[command(name = "qtip", about = "Scenario evaluation platform")]
@@ -31,6 +32,34 @@ struct Cli {
     /// Subdirectory within the repo (overrides manifest)
     #[arg(long, global = true)]
     path: Option<String>,
+
+    /// Output format
+    #[arg(long, global = true, default_value = "text")]
+    output: OutputFormat,
+}
+
+#[derive(Clone, ValueEnum)]
+enum OutputFormat {
+    Text,
+    Json,
+}
+
+#[derive(Serialize)]
+struct JsonReport {
+    project_id: String,
+    status: String,
+    passed: usize,
+    failed: usize,
+    total: usize,
+    results: Vec<JsonResult>,
+}
+
+#[derive(Serialize)]
+struct JsonResult {
+    id: String,
+    name: String,
+    status: String,
+    failures: Vec<String>,
 }
 
 #[derive(Subcommand)]
@@ -152,43 +181,74 @@ async fn run_evaluate(cli: &Cli) -> ExitCode {
 
     // Resolve
     let resolved = pipeline::resolve_scenarios(&manifest, &scenarios);
-    println!(
-        "Evaluating Subject: {}",
-        manifest.project_id
-    );
-    println!(
-        "{}: Resolved {} scenarios for project {}",
-        manifest.project_id,
-        resolved.len(),
-        manifest.project_id
-    );
-    println!();
+
+    let is_json = matches!(cli.output, OutputFormat::Json);
+
+    if !is_json {
+        println!("Evaluating Subject: {}", manifest.project_id);
+        println!(
+            "{}: Resolved {} scenarios for project {}",
+            manifest.project_id,
+            resolved.len(),
+            manifest.project_id
+        );
+        println!();
+    }
 
     // Execute
     let subject_result = pipeline::execute_subject(&manifest, &resolved).await;
 
-    // Report
-    for result in &subject_result.results {
-        let icon = match result.status {
-            EvaluationStatus::Passed => "PASSED",
-            EvaluationStatus::Failed => "FAILED",
-            EvaluationStatus::Error => "ERROR",
+    if is_json {
+        let report = JsonReport {
+            project_id: subject_result.project_id.clone(),
+            status: if subject_result.failed == 0 {
+                "passed".to_string()
+            } else {
+                "failed".to_string()
+            },
+            passed: subject_result.passed,
+            failed: subject_result.failed,
+            total: subject_result.results.len(),
+            results: subject_result
+                .results
+                .iter()
+                .map(|r| JsonResult {
+                    id: r.scenario_id.clone(),
+                    name: r.scenario_id.clone(),
+                    status: match r.status {
+                        EvaluationStatus::Passed => "passed",
+                        EvaluationStatus::Failed => "failed",
+                        EvaluationStatus::Error => "error",
+                    }
+                    .to_string(),
+                    failures: r.failures.clone(),
+                })
+                .collect(),
         };
-        println!("  - {}: {} ... {icon}", result.scenario_id, result.scenario_id);
+        println!("{}", serde_json::to_string_pretty(&report).unwrap());
+    } else {
+        for result in &subject_result.results {
+            let icon = match result.status {
+                EvaluationStatus::Passed => "PASSED",
+                EvaluationStatus::Failed => "FAILED",
+                EvaluationStatus::Error => "ERROR",
+            };
+            println!("  - {}: {} ... {icon}", result.scenario_id, result.scenario_id);
 
-        for failure in &result.failures {
-            println!("      - {failure}");
+            for failure in &result.failures {
+                println!("      - {failure}");
+            }
         }
-    }
 
-    println!();
-    println!(
-        "Summary ({}): {} passed, {} failed, {} total.",
-        subject_result.project_id,
-        subject_result.passed,
-        subject_result.failed,
-        subject_result.results.len(),
-    );
+        println!();
+        println!(
+            "Summary ({}): {} passed, {} failed, {} total.",
+            subject_result.project_id,
+            subject_result.passed,
+            subject_result.failed,
+            subject_result.results.len(),
+        );
+    }
 
     if subject_result.failed > 0 {
         ExitCode::FAILURE
