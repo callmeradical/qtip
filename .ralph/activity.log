@@ -1,0 +1,11 @@
+# Activity Log
+
+## Run Summary
+
+## Events
+
+[2026-03-29 00:45:12] ITERATION 1 start (mode=build story=US-001)
+[2026-03-29 00:45:47] Start US-001: scaffold qtip-catalog crate and workspace wiring
+[2026-03-29 00:47:16] Applied US-001 scaffold changes: Rust workspace, qtip-catalog crate wiring, scripts, and setup docs
+[2026-03-29 00:47:43] Verification complete for US-001: cargo fmt/clippy/test, npm run rust:check, npm run build all passed
+[2026-03-29 00:49:11] Updated progress log for US-001 with commit and verification details
