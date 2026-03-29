@@ -1,6 +1,7 @@
 # Activity Log
 
 ## Run Summary
+- 2026-03-29 00:53:48 | run=20260329-004512-10664 | iter=2 | mode=build | story=US-002 | duration=240s | status=success
 - 2026-03-29 00:49:46 | run=20260329-004512-10664 | iter=1 | mode=build | story=US-001 | duration=274s | status=success
 
 ## Events
@@ -16,3 +17,10 @@
 [2026-03-29 00:51:58] US-002 major code changes: added domain types, catalog errors/envelopes, scenario source/catalog traits, and unit tests for contract behavior
 [2026-03-29 00:52:30] US-002 verification complete: cargo fmt/clippy/test, npm run rust:check, and npm run build all passed
 [2026-03-29 00:53:24] US-002 progress entry appended to .ralph/progress.md
+[2026-03-29 00:53:48] ITERATION 2 end (duration=240s)
+[2026-03-29 00:53:50] ITERATION 3 start (mode=build story=US-003)
+[2026-03-29 00:54:20] US-003 iteration 3 start: initializing deep filesystem discovery implementation
+[2026-03-29 00:56:18] US-003 major code changes complete: added FileSystemSource deep discovery adapter and tests
+[2026-03-29 00:56:58] US-003 verification complete: rust gates and npm build passed
+[2026-03-29 00:57:45] US-003 final verification rerun complete: all required rust gates and npm build passing
+[2026-03-29 00:58:06] US-003 post-hardening verification complete: all required checks passing

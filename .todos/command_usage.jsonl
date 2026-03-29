@@ -28,3 +28,5 @@
 {"ts":"2026-03-29T00:45:34.69993-04:00","cmd":"usage","flags":{"new-session":"true"},"session":"ses_bd559e","ok":true,"dur_ms":82}
 {"ts":"2026-03-29T00:45:55.319343-04:00","cmd":"usage","flags":{"quiet":"true"},"session":"ses_bd559e","ok":true,"dur_ms":74}
 {"ts":"2026-03-29T00:49:56.983604-04:00","cmd":"usage","flags":{"new-session":"true"},"session":"ses_88200d","ok":true,"dur_ms":76}
+{"ts":"2026-03-29T00:54:10.539327-04:00","cmd":"usage","flags":{"new-session":"true"},"session":"ses_653f6c","ok":true,"dur_ms":71}
+{"ts":"2026-03-29T00:54:20.7285-04:00","cmd":"usage","flags":{"quiet":"true"},"session":"ses_653f6c","ok":true,"dur_ms":75}

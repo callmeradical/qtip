@@ -135,7 +135,7 @@
     {
       "id": "US-002",
       "title": "Define core domain types and trait ports",
-      "status": "in_progress",
+      "status": "done",
       "dependsOn": [
         "US-001"
       ],
@@ -147,13 +147,13 @@
         "Negative case: trait contract rejects invalid source records (empty path or missing source id) with structured error."
       ],
       "startedAt": "2026-03-29T04:49:48.379450+00:00",
-      "completedAt": null,
-      "updatedAt": "2026-03-29T04:49:48.379628+00:00"
+      "completedAt": "2026-03-29T04:53:48.217917+00:00",
+      "updatedAt": "2026-03-29T04:53:48.217742+00:00"
     },
     {
       "id": "US-003",
       "title": "Implement filesystem deep discovery adapter",
-      "status": "open",
+      "status": "in_progress",
       "dependsOn": [
         "US-002"
       ],
@@ -164,7 +164,10 @@
         "Example: nested `scenarios/auth/login-success.yaml` is discovered when include pattern is `**/*.yaml`.",
         "Negative case: file under ignored path (for example `tmp/experimental.yaml`) is not returned by discovery.",
         "Negative case: unreadable directory returns non-fatal `CatalogError` and traversal continues for other roots."
-      ]
+      ],
+      "startedAt": "2026-03-29T04:53:50.311533+00:00",
+      "completedAt": null,
+      "updatedAt": "2026-03-29T04:53:50.311775+00:00"
     },
     {
       "id": "US-004",
