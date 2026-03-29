@@ -46,17 +46,65 @@ pub struct Check {
 }
 
 /// Subject manifest as defined in JSON files.
+/// Accepts both camelCase and snake_case field names, and flexible types
+/// for environment (string or object) and project ID (projectId or project).
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SubjectManifest {
+    #[serde(alias = "project")]
     pub project_id: String,
+    #[serde(alias = "repo_url")]
     pub repo_url: Option<String>,
     pub commit: Option<String>,
-    pub environment: String,
+    #[serde(deserialize_with = "deserialize_environment")]
+    pub environment: EnvironmentConfig,
     pub interfaces: Vec<ManifestInterface>,
     pub observability: Option<Observability>,
     pub capabilities: Vec<String>,
     pub scenarios: Option<ScenariosConfig>,
+    // Allow extra fields without failing
+    #[serde(flatten)]
+    pub extra: Option<serde_json::Map<String, serde_json::Value>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct EnvironmentConfig {
+    /// The environment name used for scenario resolution
+    pub name: String,
+    /// Extra fields from environment object (api_base_url, log_path, project_root, etc.)
+    pub fields: serde_json::Map<String, serde_json::Value>,
+}
+
+impl EnvironmentConfig {
+    pub fn get(&self, key: &str) -> Option<&str> {
+        self.fields.get(key).and_then(|v| v.as_str())
+    }
+}
+
+fn deserialize_environment<'de, D>(deserializer: D) -> Result<EnvironmentConfig, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let value = serde_json::Value::deserialize(deserializer)?;
+    match value {
+        serde_json::Value::String(s) => Ok(EnvironmentConfig {
+            name: s,
+            fields: serde_json::Map::new(),
+        }),
+        serde_json::Value::Object(map) => {
+            let name = map
+                .get("name")
+                .and_then(|v| v.as_str())
+                .or_else(|| map.get("runtime").and_then(|v| v.as_str()))
+                .unwrap_or("default")
+                .to_string();
+            Ok(EnvironmentConfig { name, fields: map })
+        }
+        other => Ok(EnvironmentConfig {
+            name: other.to_string(),
+            fields: serde_json::Map::new(),
+        }),
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]

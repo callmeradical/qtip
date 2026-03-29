@@ -79,7 +79,7 @@ pub fn resolve_scenarios<'a>(
                 name: i.name().map(|s| s.to_string()),
             })
             .collect(),
-        environment: manifest.environment.clone(),
+        environment: manifest.environment.name.clone(),
     };
 
     let matched = resolver.resolve(&query);
@@ -119,6 +119,7 @@ fn to_executable(scenario: &ScenarioFile, manifest: &SubjectManifest) -> Executa
                     && (service.is_none() || i.name() == service)
             })
             .and_then(|i| i.base_url())
+            .or_else(|| manifest.environment.get("api_base_url"))
             .unwrap_or("http://localhost");
 
         let url = format!("{base_url}{path}");
@@ -136,15 +137,20 @@ fn to_executable(scenario: &ScenarioFile, manifest: &SubjectManifest) -> Executa
     }
 
     // For log interactions, inject log_path from manifest
-    if scenario.interaction.interaction_type == "logs"
-        && let Some(obs) = &manifest.observability
-        && let Some(logs) = &obs.logs
-        && let Some(path) = &logs.path
-    {
-        params.insert(
-            "log_path".to_string(),
-            serde_json::Value::String(path.clone()),
-        );
+    if scenario.interaction.interaction_type == "logs" {
+        let log_path = manifest
+            .observability
+            .as_ref()
+            .and_then(|obs| obs.logs.as_ref())
+            .and_then(|logs| logs.path.as_deref())
+            .or_else(|| manifest.environment.get("log_path"));
+
+        if let Some(path) = log_path {
+            params.insert(
+                "log_path".to_string(),
+                serde_json::Value::String(path.to_string()),
+            );
+        }
     }
 
     let checks = scenario
