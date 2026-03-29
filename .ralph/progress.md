@@ -187,3 +187,39 @@ Run summary: /Users/lars/Dev/qtip/.ralph/runs/run-20260329-004512-10664-iter-5.m
   - Useful context
   - `npm run rust:check` already exercises fmt/clippy/test for the Rust workspace and is a fast preflight before explicit gate commands.
 ---
+## [2026-03-29 01:12:47 EDT] - US-006: Aggregate deterministic results and conflict detection
+Thread: ses_0c4c97
+Run: 20260329-004512-10664 (iteration 6)
+Run log: /Users/lars/Dev/qtip/.ralph/runs/run-20260329-004512-10664-iter-6.log
+Run summary: /Users/lars/Dev/qtip/.ralph/runs/run-20260329-004512-10664-iter-6.md
+- Guardrails reviewed: yes
+- No-commit run: false
+- Commit: 50b434c feat(catalog): add deterministic conflict aggregation
+- Post-commit status: `clean`
+- Verification:
+  - Command: cargo fmt --all -- --check -> FAIL (initial), PASS (final)
+  - Command: cargo clippy --all-targets --all-features -- -D warnings -> FAIL (initial), PASS (final)
+  - Command: cargo test --all --all-features -> FAIL (initial), PASS (final)
+  - Command: npm run rust:check -> PASS
+  - Command: npm run build -> PASS
+- Files changed:
+  - .agents/tasks/prd-rust-catalog.json
+  - .ralph/activity.log
+  - .todos/agent_errors.jsonl
+  - .todos/command_usage.jsonl
+  - .todos/issues.db
+  - crates/qtip-catalog/src/lib.rs
+  - .ralph/progress.md
+- What was implemented
+  - Added deterministic aggregation for parsed scenarios by sorting successes on `source` then `path` (with `id` tie-breaker) before returning results.
+  - Added duplicate scenario-ID conflict detection that emits explicit `CatalogErrorCode::Conflict` entries, including conflicting file paths and source/path location details.
+  - Ensured conflicting scenarios are excluded from the success set while preserving all non-conflicting successes and all non-conflict errors.
+  - Added acceptance tests covering deterministic output across different concurrency timing profiles, duplicate-ID conflicts across two files with both paths referenced, and complete error collection with empty success set when all inputs fail.
+- **Learnings for future iterations:**
+  - Patterns discovered
+  - Aggregating parse results through a dedicated post-processing stage keeps concurrency logic isolated while making ordering/conflict rules explicit and testable.
+  - Gotchas encountered
+  - Borrowing parsed entries by reference for conflict grouping blocks later ownership moves; storing lightweight owned metadata avoids borrow-checker conflicts.
+  - Useful context
+  - The Rust gates will quickly surface aggregation lifetime issues, and fixing them early keeps the downstream `npm run rust:check` pass straightforward.
+---
