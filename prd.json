@@ -1,0 +1,82 @@
+{
+  "title": "Rust Scenario Catalog (Deep Discovery & Loading)",
+  "version": "0.1.0",
+  "executive_summary": {
+    "problem_statement": "The current TypeScript implementation of scenario discovery is a 'shallow module' that is tightly coupled to the local filesystem and performs sequential, fragile I/O. This makes it hard to extend to remote sources (S3, Git) and difficult to test without disk side-effects.",
+    "proposed_solution": "Implement a standalone Rust library crate (qtip-catalog) using a Ports & Adapters architecture. This crate will provide a high-concurrency, unified interface for discovering, parsing, and validating qtip scenarios across diverse storage backends.",
+    "success_criteria": [
+      "Performance: Concurrent parsing of 1,000 scenarios in < 500ms.",
+      "Reliability: 100% error collection (reports all malformed files in a single pass).",
+      "Extensibility: Zero changes required to core logic to add a new ScenarioSource (e.g., S3).",
+      "Testability: Core logic tested with 0% disk I/O using in-memory adapters."
+    ]
+  },
+  "user_experience": {
+    "user_personas": [
+      "Engine Developer: Integrating the catalog into the core qtip runner.",
+      "DevOps Engineer: Configuring qtip to load scenarios from diverse sources in CI."
+    ],
+    "user_stories": [
+      {
+        "role": "Engine Developer",
+        "action": "call a single 'find_scenarios' method",
+        "benefit": "so that I don't have to manage recursive directory walking or YAML parsing"
+      },
+      {
+        "role": "CI Engineer",
+        "action": "see a combined error report for all malformed scenarios",
+        "benefit": "so that I can fix all configuration issues in one iteration"
+      },
+      {
+        "role": "Developer",
+        "action": "have the catalog respect .gitignore patterns automatically",
+        "benefit": "so that I don't run internal scratchpad scenarios by accident"
+      }
+    ],
+    "acceptance_criteria": [
+      "Implements the ScenarioCatalog and ScenarioSource traits as defined in the RFC.",
+      "Provides a FileSystemSource that supports recursive glob patterns and respects ignore files.",
+      "Provides a StandardScenarioCatalog implementation that handles parallel orchestration using tokio and rayon.",
+      "Error reporting uses a structured Vec<CatalogError> rather than failing fast.",
+      "Concurrency is throttled via a semaphore to prevent file handle exhaustion."
+    ],
+    "non_goals": [
+      "Building the execution engine or the CLI in this crate.",
+      "Implementing remote S3/Git adapters in the MVP (only FileSystemSource)."
+    ]
+  },
+  "technical_specifications": {
+    "architecture_overview": "Ports & Adapters pattern. Ports: ScenarioSource (discover/read) and ScenarioCatalog (find/get). Internal: ScenarioLoader orchestrating async Source I/O and parallel Rayon parsing.",
+    "integration_points": [
+      "Serde: YAML deserialization",
+      "Tokio: Async orchestration",
+      "Rayon: CPU-bound parsing offload",
+      "Validator: Schema-enforced constraints",
+      "thiserror: Structured error reporting"
+    ],
+    "security_privacy": [
+      "Limit recursive depth to prevent traversal attacks.",
+      "Enforce semaphore-based limit (default: 100) on concurrent file reads."
+    ]
+  },
+  "roadmap": {
+    "phases": [
+      {
+        "version": "v0.1.0",
+        "focus": "Standalone crate, Traits defined, FileSystemSource, parallel parsing."
+      },
+      {
+        "version": "v0.2.0",
+        "focus": "Integration of ignore crate for .gitignore support."
+      },
+      {
+        "version": "v0.3.0",
+        "focus": "Addition of an InMemorySource for standard library testing."
+      }
+    ],
+    "risks": [
+      "Async/Sync Bridge complexity (Tokio to Rayon data movement).",
+      "Resource exhaustion if semaphores are misconfigured."
+    ]
+  }
+}
