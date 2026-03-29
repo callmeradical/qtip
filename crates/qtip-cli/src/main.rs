@@ -1,6 +1,7 @@
 #[allow(dead_code)]
 mod scenario;
 mod cache;
+mod init;
 mod install;
 mod pipeline;
 
@@ -64,6 +65,8 @@ struct JsonResult {
 
 #[derive(Subcommand)]
 enum Commands {
+    /// Initialize a qtip-manifest.json in the current directory
+    Init,
     /// Install qtip skills for your AI coding agent
     Install {
         #[command(subcommand)]
@@ -100,6 +103,15 @@ async fn main() -> ExitCode {
     // Handle subcommands
     if let Some(command) = &cli.command {
         return match command {
+            Commands::Init => {
+                match init::run_init() {
+                    Ok(()) => ExitCode::SUCCESS,
+                    Err(e) => {
+                        eprintln!("Error: {e}");
+                        ExitCode::FAILURE
+                    }
+                }
+            }
             Commands::Install { what } => match what {
                 InstallCommands::Skill => {
                     match install::install_skill() {
