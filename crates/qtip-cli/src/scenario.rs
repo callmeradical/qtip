@@ -56,6 +56,18 @@ pub struct SubjectManifest {
     pub interfaces: Vec<ManifestInterface>,
     pub observability: Option<Observability>,
     pub capabilities: Vec<String>,
+    pub scenarios: Option<ScenariosConfig>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ScenariosConfig {
+    /// GitHub repo (e.g. "callmeradical/scenarios")
+    pub repo: Option<String>,
+    /// Subdirectory within the repo
+    pub path: Option<String>,
+    /// Local directory (alternative to repo)
+    pub local: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
