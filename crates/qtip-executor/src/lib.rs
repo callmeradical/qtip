@@ -1,5 +1,6 @@
 #![forbid(unsafe_code)]
 
+pub mod adapters;
 pub mod check;
 pub mod executor;
 
@@ -443,5 +444,154 @@ mod tests {
 
         let result = executor.execute(&cli_scenario).await;
         assert_eq!(result.status, EvaluationStatus::Passed);
+    }
+
+    // -- CLI adapter integration tests --
+
+    mod cli_adapter_tests {
+        use super::*;
+        use crate::adapters::cli::CliAdapter;
+
+        fn cli_interaction(command: &str) -> Interaction {
+            let mut params = HashMap::new();
+            params.insert(
+                "command".to_string(),
+                serde_json::Value::String(command.to_string()),
+            );
+            Interaction {
+                interaction_type: "cli".to_string(),
+                params,
+            }
+        }
+
+        #[tokio::test]
+        async fn successful_command_returns_zero_exit_and_stdout() {
+            let adapter = CliAdapter::new();
+            let interaction = cli_interaction("echo hello world");
+
+            let evidence = adapter.execute(&interaction).await.unwrap();
+            assert_eq!(evidence.status, Some(0));
+            assert!(evidence.stdout.as_ref().unwrap().contains("hello world"));
+        }
+
+        #[tokio::test]
+        async fn failing_command_returns_nonzero_exit_code() {
+            let adapter = CliAdapter::new();
+            let interaction = cli_interaction("sh -c 'exit 42'");
+
+            let evidence = adapter.execute(&interaction).await.unwrap();
+            assert_eq!(evidence.status, Some(42));
+        }
+
+        #[tokio::test]
+        async fn stderr_is_captured() {
+            let adapter = CliAdapter::new();
+            let interaction = cli_interaction("echo error >&2");
+
+            let evidence = adapter.execute(&interaction).await.unwrap();
+            assert!(evidence.stderr.as_ref().unwrap().contains("error"));
+        }
+
+        #[tokio::test]
+        async fn missing_command_field_returns_error() {
+            let adapter = CliAdapter::new();
+            let interaction = Interaction {
+                interaction_type: "cli".to_string(),
+                params: HashMap::new(),
+            };
+
+            let result = adapter.execute(&interaction).await;
+            assert!(result.is_err());
+            assert!(result.unwrap_err().contains("missing 'command'"));
+        }
+
+        #[tokio::test]
+        async fn timeout_returns_error() {
+            let adapter = CliAdapter::with_timeout(1);
+            let interaction = cli_interaction("sleep 10");
+
+            let result = adapter.execute(&interaction).await;
+            assert!(result.is_err());
+            assert!(result.unwrap_err().contains("timed out"));
+        }
+    }
+
+    // -- Log adapter integration tests --
+
+    mod log_adapter_tests {
+        use super::*;
+        use crate::adapters::log::LogAdapter;
+        use std::io::Write;
+
+        fn log_interaction(query: &str, log_path: &str) -> Interaction {
+            let mut params = HashMap::new();
+            params.insert(
+                "query".to_string(),
+                serde_json::Value::String(query.to_string()),
+            );
+            params.insert(
+                "log_path".to_string(),
+                serde_json::Value::String(log_path.to_string()),
+            );
+            Interaction {
+                interaction_type: "logs".to_string(),
+                params,
+            }
+        }
+
+        #[tokio::test]
+        async fn finds_matching_line_in_log_file() {
+            let mut tmp = tempfile::NamedTempFile::new().unwrap();
+            writeln!(tmp, "INFO started").unwrap();
+            writeln!(tmp, "ERROR connection refused").unwrap();
+            writeln!(tmp, "INFO request complete").unwrap();
+
+            let adapter = LogAdapter::new();
+            let interaction =
+                log_interaction("ERROR", tmp.path().to_str().unwrap());
+
+            let evidence = adapter.execute(&interaction).await.unwrap();
+            assert_eq!(evidence.found, Some(true));
+        }
+
+        #[tokio::test]
+        async fn returns_not_found_when_no_match() {
+            let mut tmp = tempfile::NamedTempFile::new().unwrap();
+            writeln!(tmp, "INFO all good").unwrap();
+
+            let adapter = LogAdapter::new();
+            let interaction =
+                log_interaction("ERROR", tmp.path().to_str().unwrap());
+
+            let evidence = adapter.execute(&interaction).await.unwrap();
+            assert_eq!(evidence.found, Some(false));
+        }
+
+        #[tokio::test]
+        async fn returns_not_found_for_missing_file() {
+            let adapter = LogAdapter::new();
+            let interaction = log_interaction("ERROR", "/tmp/nonexistent-qtip-test.log");
+
+            let evidence = adapter.execute(&interaction).await.unwrap();
+            assert_eq!(evidence.found, Some(false));
+        }
+
+        #[tokio::test]
+        async fn missing_query_returns_error() {
+            let adapter = LogAdapter::new();
+            let mut params = HashMap::new();
+            params.insert(
+                "log_path".to_string(),
+                serde_json::Value::String("/tmp/test.log".to_string()),
+            );
+            let interaction = Interaction {
+                interaction_type: "logs".to_string(),
+                params,
+            };
+
+            let result = adapter.execute(&interaction).await;
+            assert!(result.is_err());
+            assert!(result.unwrap_err().contains("missing 'query'"));
+        }
     }
 }
