@@ -2,7 +2,7 @@
 
 **qtip** is a standardized mechanism for validating software systems using reusable scenario definitions. It decouples test definitions from application code, allowing the system under test (SUT) to describe itself while the platform decides how to evaluate it.
 
-## 🛡️ The "Oracle" Pattern: Agent Sandboxing
+## The "Oracle" Pattern: Agent Sandboxing
 
 qtip was specifically designed to solve the "Agent Integrity" problem in autonomous software engineering. When an AI agent is tasked with modifying a codebase, there is a risk that it might "cheat" by altering the tests to pass its own broken code.
 
@@ -14,142 +14,45 @@ qtip was specifically designed to solve the "Agent Integrity" problem in autonom
 
 This makes qtip the ideal **Evaluation Loop** for AI-driven development.
 
-## 🚀 Key Features
-...
+## Installation
 
-- **Decoupled Scenarios**: Store and version scenarios in a separate, restricted repository (e.g., `org/smith-scenarios`) rather than the application repo.
-- **Manifest-Driven**: The SUT (e.g., `org/smith`) submits a "Subject Manifest" describing its capabilities and interfaces.
-- **Multi-Adapter Support**:
-  - **API**: Validate REST/JSON responses using JSONPath.
-  - **CLI**: Validate exit codes and stdout/stderr.
-  - **Logs**: Validate system behavior by scanning log files for events.
-- **Acceptance Criteria Mapping**: Automatically map low-level assertions to high-level business requirements.
-- **CI/CD Ready**: Provides machine-readable JSON results for deployment gating.
-
-## 🏗️ Architecture
-
-```
-Subject manifest submitted
-        |
-        v
-Scenario resolution (matches capabilities + interfaces)
-        |
-        v
-Adapter execution (API, CLI, or Logs)
-        |
-        v
-Evidence collection & Check evaluation
-        |
-        v
-Acceptance criteria mapping
-        |
-        v
-Structured Results (Passed/Failed)
-```
-
-## 🛠️ Getting Started (Agent-First)
-
-The most effective way to use **qtip** is to let an AI agent (like Gemini CLI) handle the boilerplate for you. This repository includes a specialized skill to automate the creation of your project's identity and test scenarios.
-
-### 1. Install the qtip Skill
-If you are using Gemini CLI, install the helper skill to your user profile:
+### Homebrew (macOS / Linux)
 
 ```bash
-gemini skills install qtip-manifest-helper.skill --scope user --consent
-/skills reload
+brew tap callmeradical/tap
+brew install qtip
 ```
 
-### 2. Let the Agent Author your Manifest
-Instead of writing JSON by hand, simply ask your agent:
-> *"Help me create a qtip manifest for my project 'smith'. It's a CLI tool that builds microservices."*
+### From source
 
-The agent will use the `qtip-manifest-helper` skill to:
-- Identify the correct **interfaces** (e.g., `cli`).
-- Suggest relevant **capabilities** (e.g., `build`, `scaffold`).
-- Generate a schema-valid JSON manifest.
-
-### 3. Authoring Scenarios with AI
-You can also ask the agent to author complex scenarios based on your requirements:
-> *"Create a qtip scenario that validates smith's build command. It should check that the exit code is 0 and stdout contains 'Success'."*
-
----
-
-## 🚀 Running the Platform
-
-### Installation
 ```bash
-npm install
-npm run build
+cargo install --path crates/qtip-cli
 ```
 
-### Rust Catalog Workspace (US-001 scaffold)
-The repository now includes a Rust workspace member at `crates/qtip-catalog`.
+### Node.js (legacy TypeScript CLI)
 
 ```bash
-# Run Rust quality gates from repo root
-npm run rust:check
-
-# Or run individual checks
-npm run rust:fmt
-npm run rust:clippy
-npm run rust:test
-
-# Benchmark deep discovery + load path (US-008)
-npm run rust:bench:catalog
-```
-
-Benchmark details and the current baseline report are documented in `docs/rust-catalog-performance.md`.
-
-If `cargo` is missing (`cargo: command not found`), install the Rust toolchain:
-
-```bash
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-source "$HOME/.cargo/env"
-rustc --version
-cargo --version
-```
-
-If dependencies fail to resolve (for example crates.io network or index errors), retry after verifying network/proxy settings:
-
-```bash
-cargo fetch
-cargo update
-```
-
-### CLI Usage
-You can run qtip evaluations locally or delegate them to a remote server.
-
-```bash
-# Local Evaluation
+npm install && npm run build
 node dist/cli.js <manifest.json> --scenarios ./scenarios
-
-# Remote Evaluation (Delegated to a central server)
-node dist/cli.js <manifest.json> --remote http://localhost:3000/api/v1
 ```
 
-### Starting the Server
-```bash
-# Start the runner platform
-npm start
+## Quick Start
+
+**1. Create a manifest** describing your system (`manifest.json`):
+
+```json
+{
+  "projectId": "my-service",
+  "environment": "ci",
+  "interfaces": [
+    { "type": "api", "baseUrl": "http://localhost:8080" },
+    { "type": "cli" }
+  ],
+  "capabilities": ["auth", "build"]
+}
 ```
 
-### Evaluating a Subject
-Submit a manifest to the `/evaluate` endpoint:
-
-```bash
-curl -X POST http://localhost:3000/api/v1/evaluate \
-  -H "Content-Type: application/json" \
-  -d '{
-    "projectId": "identity-service",
-    "environment": "qa",
-    "interfaces": [{ "type": "api", "baseUrl": "https://api.example.com" }],
-    "capabilities": ["auth"]
-  }'
-```
-
-## 📄 Scenario Definition
-
-Scenarios are defined in YAML. Example (`scenarios/auth/login.yaml`):
+**2. Write scenarios** in YAML (`scenarios/auth/login.yaml`):
 
 ```yaml
 id: AUTH-001
@@ -157,6 +60,11 @@ name: Valid Login
 applies_to:
   capabilities: [auth]
   interfaces: [api]
+acceptance_criteria:
+  - id: AC-1
+    description: Login returns 200
+  - id: AC-2
+    description: Token is present
 interaction:
   type: api
   request:
@@ -167,23 +75,89 @@ checks:
   - type: status_code
     expected: 200
     acceptance_criteria: AC-1
+  - type: json_path
+    path: $.token
+    exists: true
+    acceptance_criteria: AC-2
 ```
 
-## 📚 Documentation
-
-The full documentation, including the Architecture Deep-Dive, Testability Matrix, and NFRs, is built using **Zensical**.
+**3. Run the evaluation:**
 
 ```bash
-# Build documentation
-npm run docs:build
-
-# Preview documentation locally
-npm run docs:serve
+qtip manifest.json --scenarios ./scenarios
 ```
 
-## 🐙 GitHub Action
+Output:
+```
+Evaluating Subject: my-service
+my-service: Resolved 1 scenarios for project my-service
 
-You can use **qtip** directly in your CI pipelines with our GitHub Action.
+  - AUTH-001: AUTH-001 ... PASSED
+
+Summary (my-service): 1 passed, 0 failed, 1 total.
+```
+
+Exit code 0 on success, 1 on any failure — ready for CI gating.
+
+## Adapters
+
+qtip supports three interaction types, selected per-scenario:
+
+| Adapter | Interaction Type | Evidence Collected |
+|---------|-----------------|-------------------|
+| **API** | `api` | HTTP status, JSON body, headers |
+| **CLI** | `cli` | Exit code, stdout, stderr |
+| **Logs** | `logs` | Line matching against log files |
+
+### Check Types
+
+| Check | Works With | Description |
+|-------|-----------|-------------|
+| `status_code` | API, CLI | Compare HTTP status or exit code |
+| `json_path` | API | Query JSON response with JSONPath, check existence or value |
+| `stdout` | CLI | Assert stdout contains expected string |
+| `stderr` | CLI | Assert stderr contains expected string |
+| `log_contains` | Logs | Assert a log event was found |
+| `log_not_contains` | Logs | Assert a log event was NOT found |
+
+## Architecture
+
+```
+manifest.json ──> qtip ──> scenarios/*.yaml
+                    |
+        ┌───────────┼───────────┐
+        v           v           v
+  qtip-catalog  qtip-resolver  qtip-executor
+  (discover)    (filter)       (run + check)
+                                    |
+                             ┌──────┼──────┐
+                             v      v      v
+                           CLI    Log    API
+                          adapter adapter adapter
+```
+
+The platform is built as a Rust workspace with four crates:
+
+| Crate | Purpose |
+|-------|---------|
+| `qtip-catalog` | Scenario file discovery with glob patterns, `.gitignore` support, concurrent loading |
+| `qtip-resolver` | Matches scenarios to subject capabilities, interfaces, and environments |
+| `qtip-executor` | Check evaluation engine, adapter trait, and concrete CLI/Log/API adapters |
+| `qtip-cli` | Binary that wires the pipeline together |
+
+## Scenario Resolution
+
+Scenarios are filtered based on three dimensions:
+
+1. **Capabilities** — at least one of the scenario's capabilities must appear in the manifest
+2. **Interfaces** — at least one of the scenario's interface types must appear in the manifest
+3. **Environments** (optional) — if a scenario specifies environments, the manifest's environment must match
+
+Scenarios with no `environments` field match any environment.
+
+## CI/CD Integration
+
+### GitHub Action
 
 ```yaml
 steps:
@@ -201,11 +175,60 @@ steps:
       scenarios-directory: './scenarios'
 ```
 
-The action will:
-1. Resolve applicable scenarios.
-2. Execute interactions (API, CLI, Logs).
-3. Post a **Job Summary** table with the results.
-4. Fail the build if any acceptance criteria are not met.
+### Direct CLI in CI
 
-## 📜 License
+```yaml
+steps:
+  - uses: actions/checkout@v4
+  - name: Install qtip
+    run: cargo install --path crates/qtip-cli
+  - name: Run evaluation
+    run: qtip manifest.json --scenarios scenarios
+```
+
+## Development
+
+### Prerequisites
+
+- Rust toolchain (`rustup`)
+- Node.js 18+ (for the legacy TypeScript components)
+
+### Building and Testing
+
+```bash
+# Run all Rust tests (67 tests across 3 library crates)
+cargo test --all
+
+# Run clippy lints
+cargo clippy --all-targets --all-features -- -D warnings
+
+# Build the CLI binary
+cargo build --release --package qtip-cli
+
+# Run the legacy TypeScript tests
+npm install && npm test
+```
+
+### Releasing
+
+Releases are automated via GitHub Actions. To cut a release:
+
+```bash
+git tag v0.3.0
+git push origin v0.3.0
+```
+
+This triggers cross-compilation for macOS (amd64/arm64) and Linux (amd64/arm64), creates a GitHub Release with tarballs and checksums, and updates the Homebrew formula in `callmeradical/homebrew-tap`.
+
+## Documentation
+
+Full documentation including the Architecture Deep-Dive and NFRs is built using Zensical:
+
+```bash
+npm run docs:build
+npm run docs:serve
+```
+
+## License
+
 ISC
