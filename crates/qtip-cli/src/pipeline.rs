@@ -75,8 +75,8 @@ pub fn resolve_scenarios<'a>(
             .interfaces
             .iter()
             .map(|i| SubjectInterface {
-                interface_type: i.interface_type.clone(),
-                name: i.name.clone(),
+                interface_type: i.interface_type().to_string(),
+                name: i.name().map(|s| s.to_string()),
             })
             .collect(),
         environment: manifest.environment.clone(),
@@ -115,10 +115,10 @@ fn to_executable(scenario: &ScenarioFile, manifest: &SubjectManifest) -> Executa
             .interfaces
             .iter()
             .find(|i| {
-                i.interface_type == "api"
-                    && (service.is_none() || i.name.as_deref() == service)
+                i.interface_type() == "api"
+                    && (service.is_none() || i.name() == service)
             })
-            .and_then(|i| i.base_url.as_deref())
+            .and_then(|i| i.base_url())
             .unwrap_or("http://localhost");
 
         let url = format!("{base_url}{path}");

@@ -71,12 +71,42 @@ pub struct ScenariosConfig {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ManifestInterface {
-    #[serde(rename = "type")]
-    pub interface_type: String,
-    pub name: Option<String>,
-    pub base_url: Option<String>,
+#[serde(untagged)]
+pub enum ManifestInterface {
+    /// Full object: { "type": "api", "baseUrl": "..." }
+    Full {
+        #[serde(rename = "type")]
+        interface_type: String,
+        #[serde(default, rename = "baseUrl")]
+        base_url: Option<String>,
+        #[serde(default)]
+        name: Option<String>,
+    },
+    /// Short form: just "api"
+    Short(String),
+}
+
+impl ManifestInterface {
+    pub fn interface_type(&self) -> &str {
+        match self {
+            ManifestInterface::Full { interface_type, .. } => interface_type,
+            ManifestInterface::Short(s) => s,
+        }
+    }
+
+    pub fn name(&self) -> Option<&str> {
+        match self {
+            ManifestInterface::Full { name, .. } => name.as_deref(),
+            ManifestInterface::Short(_) => None,
+        }
+    }
+
+    pub fn base_url(&self) -> Option<&str> {
+        match self {
+            ManifestInterface::Full { base_url, .. } => base_url.as_deref(),
+            ManifestInterface::Short(_) => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]
