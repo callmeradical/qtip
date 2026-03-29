@@ -150,3 +150,40 @@ Run summary: /Users/lars/Dev/qtip/.ralph/runs/run-20260329-004512-10664-iter-4.m
   - Useful context
   - Existing run harness files (`.todos/*`, `.ralph/*`, PRD task file) can be dirty from orchestration; verify commit intent before finalizing.
 ---
+## [2026-03-29 01:08:16 EDT] - US-005: Add parsing and schema validation pipeline
+Thread: ses_e59b10
+Run: 20260329-004512-10664 (iteration 5)
+Run log: /Users/lars/Dev/qtip/.ralph/runs/run-20260329-004512-10664-iter-5.log
+Run summary: /Users/lars/Dev/qtip/.ralph/runs/run-20260329-004512-10664-iter-5.md
+- Guardrails reviewed: yes
+- No-commit run: false
+- Commit: 8529a50 feat(catalog): add scenario parse validation pipeline
+- Post-commit status: `clean`
+- Verification:
+  - Command: npm run rust:check -> PASS
+  - Command: cargo fmt --all -- --check -> PASS
+  - Command: cargo clippy --all-targets --all-features -- -D warnings -> PASS
+  - Command: cargo test --all --all-features -> PASS
+  - Command: npm run build -> PASS
+- Files changed:
+  - .agents/tasks/prd-rust-catalog.json
+  - .ralph/activity.log
+  - .todos/command_usage.jsonl
+  - .todos/issues.db
+  - Cargo.lock
+  - crates/qtip-catalog/Cargo.toml
+  - crates/qtip-catalog/src/lib.rs
+  - .ralph/progress.md
+- What was implemented
+  - Added YAML parsing into strongly typed canonical `Scenario` values via `ScenarioCatalog::load_scenarios`.
+  - Implemented schema/semantic validation for required fields, unique non-zero step ordering, scalar payload/assertion values, and required assertion fields.
+  - Added parse-stage and validate-stage error mapping with source file path attribution.
+  - Added acceptance tests for valid login scenario parsing, malformed YAML parse failure, missing `steps` validation failure, duplicate step order, and missing assertion `equals`.
+- **Learnings for future iterations:**
+  - Patterns discovered
+  - Keep document loading and scenario parsing as separate stages so US-004 behavior remains stable while adding typed scenario output.
+  - Gotchas encountered
+  - Avoid shell command substitution in `git commit -m` bodies when including backticks.
+  - Useful context
+  - `npm run rust:check` already exercises fmt/clippy/test for the Rust workspace and is a fast preflight before explicit gate commands.
+---
