@@ -162,6 +162,7 @@ jobs:
 
           # Push to homebrew-tap repo
           git clone "https://x-access-token:${HOMEBREW_TAP_GITHUB_TOKEN}@github.com/callmeradical/homebrew-tap.git" tap
+          mkdir -p tap/Formula
           cp qtip.rb tap/Formula/qtip.rb
           cd tap
           git config user.name "github-actions[bot]"
