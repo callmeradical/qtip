@@ -77,3 +77,38 @@ Run summary: /Users/lars/Dev/qtip/.ralph/runs/run-20260329-004512-10664-iter-2.m
   - Useful context
     - A simple safe `Wake`-based helper can drive async trait futures in unit tests without adding an async runtime dependency to tests.
 ---
+## [2026-03-29 00:58:20 EDT] - US-003: Implement filesystem deep discovery adapter
+Thread: ses_653f6c
+Run: 20260329-004512-10664 (iteration 3)
+Run log: /Users/lars/Dev/qtip/.ralph/runs/run-20260329-004512-10664-iter-3.log
+Run summary: /Users/lars/Dev/qtip/.ralph/runs/run-20260329-004512-10664-iter-3.md
+- Guardrails reviewed: yes
+- No-commit run: false
+- Commit: 78885a9 feat(catalog): implement filesystem deep discovery
+- Post-commit status: `clean`
+- Verification:
+  - Command: npm run rust:check -> PASS
+  - Command: cargo fmt --all -- --check -> PASS
+  - Command: cargo clippy --all-targets --all-features -- -D warnings -> PASS
+  - Command: cargo test --all --all-features -> PASS
+  - Command: npm run build -> PASS
+- Files changed:
+  - .agents/tasks/prd-rust-catalog.json
+  - .ralph/activity.log
+  - .todos/command_usage.jsonl
+  - .todos/issues.db
+  - crates/qtip-catalog/src/lib.rs
+- What was implemented
+  - Added `FileSystemSourceConfig` and `FileSystemSource` adapter with recursive root walking via `ignore::WalkBuilder`.
+  - Added include/exclude/ignore glob compilation and matching, with `.gitignore` support and traversal-level filtering for explicit ignores.
+  - Implemented non-fatal discovery error collection (including unreadable directories) while continuing traversal across other roots.
+  - Added discovery acceptance tests for recursive nested YAML matches, explicit ignores, `.gitignore` handling, and unreadable-root continuation.
+  - Hardened `load_document` against absolute paths and `..` traversal segments.
+- **Learnings for future iterations:**
+  - Patterns discovered
+  - `ignore::WalkBuilder::filter_entry` is the cleanest way to prune ignored directories early while preserving non-fatal walk errors.
+  - Gotchas encountered
+  - `ignore::Error` in v0.4.25 has no `path()` helper; extracting paths requires matching enum variants (`WithPath`, `Loop`, nested wrappers).
+  - Useful context
+  - Running `npm run rust:check` early surfaces formatting drift quickly before clippy/test cycles.
+---
