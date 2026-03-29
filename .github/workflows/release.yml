@@ -1,0 +1,170 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+  BINARY_NAME: qtip
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            archive: qtip_darwin_amd64
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            archive: qtip_darwin_arm64
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            archive: qtip_linux_amd64
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+            archive: qtip_linux_arm64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install cross-compilation tools (Linux ARM64)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+
+      - name: Build release binary
+        run: cargo build --release --package qtip-cli --target ${{ matrix.target }}
+
+      - name: Package archive
+        run: |
+          mkdir -p dist
+          cp target/${{ matrix.target }}/release/${{ env.BINARY_NAME }} dist/
+          cd dist
+          tar czf ../${{ matrix.archive }}.tar.gz ${{ env.BINARY_NAME }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.archive }}
+          path: ${{ matrix.archive }}.tar.gz
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Collect archives and generate checksums
+        run: |
+          mkdir -p release
+          find artifacts -name '*.tar.gz' -exec cp {} release/ \;
+          cd release
+          sha256sum *.tar.gz > checksums.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            release/*.tar.gz
+            release/checksums.txt
+
+  update-homebrew:
+    needs: release
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download artifacts for checksum
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Collect archives
+        run: |
+          mkdir -p release
+          find artifacts -name '*.tar.gz' -exec cp {} release/ \;
+
+      - name: Update Homebrew formula
+        env:
+          HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          DARWIN_ARM64_SHA=$(sha256sum release/qtip_darwin_arm64.tar.gz | awk '{print $1}')
+          DARWIN_AMD64_SHA=$(sha256sum release/qtip_darwin_amd64.tar.gz | awk '{print $1}')
+          LINUX_AMD64_SHA=$(sha256sum release/qtip_linux_amd64.tar.gz | awk '{print $1}')
+          LINUX_ARM64_SHA=$(sha256sum release/qtip_linux_arm64.tar.gz | awk '{print $1}')
+
+          BASE_URL="https://github.com/callmeradical/qtip/releases/download/v${VERSION}"
+
+          cat > qtip.rb << FORMULA
+          class Qtip < Formula
+            desc "Scenario evaluation platform for AI agent integrity"
+            homepage "https://github.com/callmeradical/qtip"
+            version "${VERSION}"
+            license "ISC"
+
+            on_macos do
+              if Hardware::CPU.arm?
+                url "${BASE_URL}/qtip_darwin_arm64.tar.gz"
+                sha256 "${DARWIN_ARM64_SHA}"
+              else
+                url "${BASE_URL}/qtip_darwin_amd64.tar.gz"
+                sha256 "${DARWIN_AMD64_SHA}"
+              end
+            end
+
+            on_linux do
+              if Hardware::CPU.arm?
+                url "${BASE_URL}/qtip_linux_arm64.tar.gz"
+                sha256 "${LINUX_ARM64_SHA}"
+              else
+                url "${BASE_URL}/qtip_linux_amd64.tar.gz"
+                sha256 "${LINUX_AMD64_SHA}"
+              end
+            end
+
+            def install
+              bin.install "qtip"
+            end
+
+            test do
+              assert_match "qtip", shell_output("#{bin}/qtip --help")
+            end
+          end
+          FORMULA
+
+          # Remove leading whitespace from heredoc
+          sed -i 's/^          //' qtip.rb
+
+          # Push to homebrew-tap repo
+          git clone "https://x-access-token:${HOMEBREW_TAP_GITHUB_TOKEN}@github.com/callmeradical/homebrew-tap.git" tap
+          cp qtip.rb tap/Formula/qtip.rb
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/qtip.rb
+          git diff --cached --quiet || git commit -m "Update qtip to ${VERSION}"
+          git push
