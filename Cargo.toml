@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/qtip-catalog", "crates/qtip-resolver", "crates/qtip-executor"]
+members = ["crates/qtip-catalog", "crates/qtip-resolver", "crates/qtip-executor", "crates/qtip-cli"]
 resolver = "2"
 
 [workspace.lints.rust]

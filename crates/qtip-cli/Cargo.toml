@@ -1,0 +1,23 @@
+[package]
+name = "qtip-cli"
+version = "0.1.0"
+edition = "2024"
+description = "CLI binary for qtip scenario evaluation"
+license = "ISC"
+
+[[bin]]
+name = "qtip"
+path = "src/main.rs"
+
+[dependencies]
+qtip-catalog = { path = "../qtip-catalog" }
+qtip-resolver = { path = "../qtip-resolver" }
+qtip-executor = { path = "../qtip-executor" }
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9.34"
+tokio = { version = "1.50.0", features = ["rt-multi-thread", "macros", "fs"] }
+clap = { version = "4", features = ["derive"] }
+
+[lints]
+workspace = true
