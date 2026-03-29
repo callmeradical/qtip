@@ -4,10 +4,14 @@ use std::collections::BTreeMap;
 use std::future::Future;
 use std::path::{Component, Path, PathBuf};
 use std::pin::Pin;
+use std::sync::Arc;
 use std::time::SystemTime;
 
 use globset::{Glob, GlobSet, GlobSetBuilder};
 use ignore::WalkBuilder;
+use rayon::prelude::*;
+use tokio::sync::Semaphore;
+use tokio::task::JoinSet;
 
 /// Returns the crate name used by downstream integration tests and wiring checks.
 pub fn crate_id() -> &'static str {
@@ -354,6 +358,178 @@ pub trait ScenarioCatalog: Send + Sync {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StandardScenarioCatalogConfig {
+    pub io_concurrency_limit: usize,
+}
+
+impl Default for StandardScenarioCatalogConfig {
+    fn default() -> Self {
+        Self {
+            io_concurrency_limit: 100,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct StandardScenarioCatalog<S>
+where
+    S: ScenarioSource + 'static,
+{
+    source: Arc<S>,
+    io_concurrency_limit: usize,
+}
+
+impl<S> StandardScenarioCatalog<S>
+where
+    S: ScenarioSource + 'static,
+{
+    pub fn new(source: S, config: StandardScenarioCatalogConfig) -> Result<Self, CatalogError> {
+        Self::from_arc(Arc::new(source), config)
+    }
+
+    pub fn from_arc(
+        source: Arc<S>,
+        config: StandardScenarioCatalogConfig,
+    ) -> Result<Self, CatalogError> {
+        if config.io_concurrency_limit == 0 {
+            return Err(CatalogError::validation(
+                "StandardScenarioCatalog requires io_concurrency_limit greater than zero",
+                CatalogStage::Catalog,
+                Some("io_concurrency_limit"),
+                None,
+                Some(source.source_id().to_string()),
+            ));
+        }
+
+        Ok(Self {
+            source,
+            io_concurrency_limit: config.io_concurrency_limit,
+        })
+    }
+
+    async fn load_with_bounded_io(&self, refs: &[ScenarioRef]) -> ScenarioDocumentEnvelope {
+        let source_id = self.source.source_id().trim().to_string();
+        if source_id.is_empty() {
+            return ScenarioDocumentEnvelope::new(
+                Vec::new(),
+                vec![CatalogError::invalid_source_record(
+                    "Scenario source adapter is missing source_id",
+                    Some("source_id"),
+                    None,
+                    None,
+                )],
+            );
+        }
+
+        let mut validated_refs = Vec::with_capacity(refs.len());
+        let mut errors = Vec::new();
+
+        for (index, scenario_ref) in refs.iter().enumerate() {
+            match scenario_ref.validate_contract(Some(source_id.as_str())) {
+                Ok(()) => validated_refs.push((index, scenario_ref.clone())),
+                Err(error) => errors.push(error),
+            }
+        }
+
+        if validated_refs.is_empty() {
+            return ScenarioDocumentEnvelope::new(Vec::new(), errors);
+        }
+
+        let loaded = self.read_documents_async(validated_refs).await;
+        errors.extend(loaded.errors);
+
+        let parsed = Self::parse_and_validate_documents(loaded.items);
+        errors.extend(parsed.errors);
+
+        ScenarioDocumentEnvelope::new(parsed.items, errors)
+    }
+
+    async fn read_documents_async(
+        &self,
+        refs: Vec<(usize, ScenarioRef)>,
+    ) -> CatalogEnvelope<(usize, ScenarioDocument)> {
+        let semaphore = Arc::new(Semaphore::new(self.io_concurrency_limit));
+        let mut tasks = JoinSet::new();
+
+        for (index, scenario_ref) in refs {
+            let source = Arc::clone(&self.source);
+            let source_id = source.source_id().to_string();
+            let semaphore = Arc::clone(&semaphore);
+            tasks.spawn(async move {
+                let permit = semaphore.acquire_owned().await.map_err(|_| {
+                    CatalogError::load(
+                        "Loader semaphore closed before acquiring permit",
+                        Some(scenario_ref.path.clone()),
+                        Some(source_id.clone()),
+                    )
+                })?;
+
+                let loaded = source.load_document(&scenario_ref).await;
+                drop(permit);
+
+                loaded.map(|document| (index, document))
+            });
+        }
+
+        let mut items = Vec::new();
+        let mut errors = Vec::new();
+
+        while let Some(joined) = tasks.join_next().await {
+            match joined {
+                Ok(Ok(item)) => items.push(item),
+                Ok(Err(error)) => errors.push(error),
+                Err(join_error) => errors.push(CatalogError::load(
+                    format!("Loader task failed before completion: {join_error}"),
+                    None,
+                    Some(self.source.source_id().to_string()),
+                )),
+            }
+        }
+
+        CatalogEnvelope::new(items, errors)
+    }
+
+    fn parse_and_validate_documents(
+        mut documents: Vec<(usize, ScenarioDocument)>,
+    ) -> ScenarioDocumentEnvelope {
+        documents.sort_by_key(|(index, _)| *index);
+
+        let validated = documents
+            .into_par_iter()
+            .map(|(_, document)| {
+                document.validate_contract()?;
+                Ok(document)
+            })
+            .collect::<Vec<Result<ScenarioDocument, CatalogError>>>();
+
+        let mut items = Vec::new();
+        let mut errors = Vec::new();
+
+        for result in validated {
+            match result {
+                Ok(document) => items.push(document),
+                Err(error) => errors.push(error),
+            }
+        }
+
+        ScenarioDocumentEnvelope::new(items, errors)
+    }
+}
+
+impl<S> ScenarioCatalog for StandardScenarioCatalog<S>
+where
+    S: ScenarioSource + 'static,
+{
+    fn discover(&self) -> ScenarioRefEnvelope {
+        self.source.discover()
+    }
+
+    fn load<'a>(&'a self, refs: &'a [ScenarioRef]) -> BoxFuture<'a, ScenarioDocumentEnvelope> {
+        Box::pin(async move { self.load_with_bounded_io(refs).await })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FileSystemSourceConfig {
     pub source_id: String,
     pub roots: Vec<PathBuf>,
@@ -677,9 +853,10 @@ fn detect_document_format(path: &Path) -> ScenarioDocumentFormat {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
+    use std::collections::{HashMap, HashSet};
     use std::path::Path;
     use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
     use std::task::{Context, Poll, Wake, Waker};
     use std::time::{Duration, UNIX_EPOCH};
 
@@ -709,6 +886,62 @@ mod tests {
                         "No in-memory document found for scenario path",
                         CatalogStage::Load,
                         Some("path"),
+                        Some(scenario_ref.path.clone()),
+                        Some(self.source_id.clone()),
+                    )
+                })?;
+
+                Ok(ScenarioDocument::new(
+                    scenario_ref.id.clone(),
+                    raw.clone(),
+                    ScenarioDocumentFormat::Yaml,
+                ))
+            })
+        }
+    }
+
+    #[derive(Debug)]
+    struct ConcurrencyTrackingSource {
+        source_id: String,
+        docs: HashMap<String, String>,
+        failed_paths: HashSet<String>,
+        active_loads: Arc<AtomicUsize>,
+        peak_loads: Arc<AtomicUsize>,
+        io_delay: Duration,
+    }
+
+    impl ScenarioSource for ConcurrencyTrackingSource {
+        fn source_id(&self) -> &str {
+            &self.source_id
+        }
+
+        fn discover_refs(&self) -> Result<Vec<ScenarioRef>, CatalogError> {
+            Ok(Vec::new())
+        }
+
+        fn load_document<'a>(
+            &'a self,
+            scenario_ref: &'a ScenarioRef,
+        ) -> BoxFuture<'a, Result<ScenarioDocument, CatalogError>> {
+            Box::pin(async move {
+                let active = self.active_loads.fetch_add(1, Ordering::SeqCst) + 1;
+                update_peak(&self.peak_loads, active);
+
+                std::thread::sleep(self.io_delay);
+
+                self.active_loads.fetch_sub(1, Ordering::SeqCst);
+
+                if self.failed_paths.contains(&scenario_ref.path) {
+                    return Err(CatalogError::load(
+                        "Simulated source read failure",
+                        Some(scenario_ref.path.clone()),
+                        Some(self.source_id.clone()),
+                    ));
+                }
+
+                let raw = self.docs.get(&scenario_ref.path).ok_or_else(|| {
+                    CatalogError::load(
+                        "No in-memory document found for scenario path",
                         Some(scenario_ref.path.clone()),
                         Some(self.source_id.clone()),
                     )
@@ -963,6 +1196,156 @@ mod tests {
                 .iter()
                 .any(|error| error.stage == CatalogStage::Discover)
         );
+    }
+
+    #[test]
+    fn standard_catalog_loads_500_files_with_concurrency_limit_100() {
+        let source_id = "memory".to_string();
+        let (refs, docs) = build_refs_and_docs(500, &source_id);
+        let peak_loads = Arc::new(AtomicUsize::new(0));
+
+        let source = ConcurrencyTrackingSource {
+            source_id: source_id.clone(),
+            docs,
+            failed_paths: HashSet::new(),
+            active_loads: Arc::new(AtomicUsize::new(0)),
+            peak_loads: Arc::clone(&peak_loads),
+            io_delay: Duration::from_millis(1),
+        };
+        let catalog = StandardScenarioCatalog::new(
+            source,
+            StandardScenarioCatalogConfig {
+                io_concurrency_limit: 100,
+            },
+        )
+        .expect("standard catalog should build with positive concurrency limit");
+        let runtime = tokio_runtime();
+
+        let loaded = runtime.block_on(catalog.load(&refs));
+
+        assert!(loaded.errors.is_empty());
+        assert_eq!(loaded.items.len(), 500);
+        assert!(peak_loads.load(Ordering::SeqCst) <= 100);
+    }
+
+    #[test]
+    fn standard_catalog_limit_one_remains_correct_without_deadlock() {
+        let source_id = "memory".to_string();
+        let (refs, docs) = build_refs_and_docs(25, &source_id);
+        let peak_loads = Arc::new(AtomicUsize::new(0));
+
+        let source = ConcurrencyTrackingSource {
+            source_id,
+            docs,
+            failed_paths: HashSet::new(),
+            active_loads: Arc::new(AtomicUsize::new(0)),
+            peak_loads: Arc::clone(&peak_loads),
+            io_delay: Duration::from_millis(2),
+        };
+        let catalog = StandardScenarioCatalog::new(
+            source,
+            StandardScenarioCatalogConfig {
+                io_concurrency_limit: 1,
+            },
+        )
+        .expect("standard catalog should build with limit one");
+        let runtime = tokio_runtime();
+
+        let loaded = runtime.block_on(async {
+            tokio::time::timeout(Duration::from_secs(5), catalog.load(&refs))
+                .await
+                .expect("load should complete without deadlock")
+        });
+
+        assert!(loaded.errors.is_empty());
+        assert_eq!(loaded.items.len(), 25);
+        assert_eq!(peak_loads.load(Ordering::SeqCst), 1);
+    }
+
+    #[test]
+    fn standard_catalog_collects_source_read_failures_without_aborting_remaining_loads() {
+        let source_id = "memory".to_string();
+        let (refs, docs) = build_refs_and_docs(12, &source_id);
+        let failed_paths = HashSet::from([
+            "scenarios/auth/scenario-2.yaml".to_string(),
+            "scenarios/auth/scenario-6.yaml".to_string(),
+            "scenarios/auth/scenario-9.yaml".to_string(),
+        ]);
+
+        let source = ConcurrencyTrackingSource {
+            source_id,
+            docs,
+            failed_paths: failed_paths.clone(),
+            active_loads: Arc::new(AtomicUsize::new(0)),
+            peak_loads: Arc::new(AtomicUsize::new(0)),
+            io_delay: Duration::from_millis(1),
+        };
+        let catalog = StandardScenarioCatalog::new(
+            source,
+            StandardScenarioCatalogConfig {
+                io_concurrency_limit: 4,
+            },
+        )
+        .expect("standard catalog should build");
+        let runtime = tokio_runtime();
+
+        let loaded = runtime.block_on(catalog.load(&refs));
+
+        assert_eq!(loaded.items.len(), 9);
+        assert_eq!(loaded.errors.len(), 3);
+        assert!(
+            loaded
+                .errors
+                .iter()
+                .all(|error| error.code == CatalogErrorCode::LoadFailure)
+        );
+        let error_paths = loaded
+            .errors
+            .iter()
+            .filter_map(|error| error.path.clone())
+            .collect::<HashSet<String>>();
+        assert_eq!(error_paths, failed_paths);
+    }
+
+    fn build_refs_and_docs(
+        total: usize,
+        source_id: &str,
+    ) -> (Vec<ScenarioRef>, HashMap<String, String>) {
+        let mut refs = Vec::with_capacity(total);
+        let mut docs = HashMap::with_capacity(total);
+
+        for index in 0..total {
+            let id = format!("scenario-{index}");
+            let path = format!("scenarios/auth/{id}.yaml");
+            refs.push(ScenarioRef {
+                id: id.clone(),
+                path: path.clone(),
+                source: source_id.to_string(),
+                fingerprint: None,
+                discovered_at: SystemTime::UNIX_EPOCH,
+            });
+            docs.insert(path, format!("id: {id}"));
+        }
+
+        (refs, docs)
+    }
+
+    fn update_peak(peak: &AtomicUsize, candidate: usize) {
+        let mut current = peak.load(Ordering::SeqCst);
+        while candidate > current {
+            match peak.compare_exchange(current, candidate, Ordering::SeqCst, Ordering::SeqCst) {
+                Ok(_) => break,
+                Err(observed) => current = observed,
+            }
+        }
+    }
+
+    fn tokio_runtime() -> tokio::runtime::Runtime {
+        tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(4)
+            .enable_time()
+            .build()
+            .expect("tokio runtime should build")
     }
 
     fn block_on<F>(future: F) -> F::Output

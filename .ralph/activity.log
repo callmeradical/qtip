@@ -1,6 +1,7 @@
 # Activity Log
 
 ## Run Summary
+- 2026-03-29 00:58:55 | run=20260329-004512-10664 | iter=3 | mode=build | story=US-003 | duration=304s | status=success
 - 2026-03-29 00:53:48 | run=20260329-004512-10664 | iter=2 | mode=build | story=US-002 | duration=240s | status=success
 - 2026-03-29 00:49:46 | run=20260329-004512-10664 | iter=1 | mode=build | story=US-001 | duration=274s | status=success
 
@@ -25,3 +26,8 @@
 [2026-03-29 00:57:45] US-003 final verification rerun complete: all required rust gates and npm build passing
 [2026-03-29 00:58:06] US-003 post-hardening verification complete: all required checks passing
 [2026-03-29 00:58:34] US-003 progress entry appended to .ralph/progress.md
+[2026-03-29 00:58:54] ITERATION 3 end (duration=304s)
+[2026-03-29 00:58:57] ITERATION 4 start (mode=build story=US-004)
+[2026-03-29 00:59:31] Start US-004 implementation (Run 20260329-004512-10664 iter 4)
+[2026-03-29 01:01:54] Implemented US-004 bounded concurrent loader orchestrator and acceptance tests
+[2026-03-29 01:02:25] Completed US-004 verification commands (rust gates + build)
