@@ -261,6 +261,22 @@ impl CatalogError {
             details: BTreeMap::new(),
         }
     }
+
+    pub fn conflict(
+        message: impl Into<String>,
+        path: Option<String>,
+        source: Option<String>,
+        details: BTreeMap<String, String>,
+    ) -> Self {
+        Self {
+            code: CatalogErrorCode::Conflict,
+            message: message.into(),
+            path,
+            source,
+            stage: CatalogStage::Catalog,
+            details,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -321,6 +337,12 @@ struct LoadedScenarioDocument {
     index: usize,
     scenario_ref: ScenarioRef,
     document: ScenarioDocument,
+}
+
+#[derive(Debug, Clone)]
+struct ParsedScenario {
+    scenario_ref: ScenarioRef,
+    scenario: Scenario,
 }
 
 impl RawScenario {
@@ -709,9 +731,10 @@ where
         errors.extend(validated_documents.errors);
 
         let parsed = Self::parse_and_validate_scenarios(validated_documents.items);
-        errors.extend(parsed.errors);
+        let aggregated = Self::aggregate_scenarios(parsed);
+        errors.extend(aggregated.errors);
 
-        ScenarioEnvelope::new(parsed.items, errors)
+        ScenarioEnvelope::new(aggregated.items, errors)
     }
 
     async fn read_documents_async(
@@ -798,11 +821,13 @@ where
         CatalogEnvelope::new(items, errors)
     }
 
-    fn parse_and_validate_scenarios(documents: Vec<LoadedScenarioDocument>) -> ScenarioEnvelope {
+    fn parse_and_validate_scenarios(
+        documents: Vec<LoadedScenarioDocument>,
+    ) -> CatalogEnvelope<ParsedScenario> {
         let parsed = documents
             .into_par_iter()
             .map(Self::parse_and_validate_scenario_document)
-            .collect::<Vec<Result<Scenario, CatalogError>>>();
+            .collect::<Vec<Result<ParsedScenario, CatalogError>>>();
 
         let mut items = Vec::new();
         let mut errors = Vec::new();
@@ -814,12 +839,12 @@ where
             }
         }
 
-        ScenarioEnvelope::new(items, errors)
+        CatalogEnvelope::new(items, errors)
     }
 
     fn parse_and_validate_scenario_document(
         loaded: LoadedScenarioDocument,
-    ) -> Result<Scenario, CatalogError> {
+    ) -> Result<ParsedScenario, CatalogError> {
         if !matches!(loaded.document.format, ScenarioDocumentFormat::Yaml) {
             return Err(CatalogError::parse(
                 format!(
@@ -840,7 +865,81 @@ where
                 )
             })?;
 
-        parsed.into_scenario(&loaded.scenario_ref)
+        parsed
+            .into_scenario(&loaded.scenario_ref)
+            .map(|scenario| ParsedScenario {
+                scenario_ref: loaded.scenario_ref,
+                scenario,
+            })
+    }
+
+    fn aggregate_scenarios(parsed: CatalogEnvelope<ParsedScenario>) -> ScenarioEnvelope {
+        let mut items = parsed.items;
+        items.sort_by(|left, right| {
+            left.scenario_ref
+                .source
+                .cmp(&right.scenario_ref.source)
+                .then(left.scenario_ref.path.cmp(&right.scenario_ref.path))
+                .then(left.scenario.id.cmp(&right.scenario.id))
+        });
+
+        let mut duplicate_entries = BTreeMap::<String, Vec<(String, String)>>::new();
+        for item in &items {
+            duplicate_entries
+                .entry(item.scenario.id.clone())
+                .or_default()
+                .push((
+                    item.scenario_ref.source.clone(),
+                    item.scenario_ref.path.clone(),
+                ));
+        }
+
+        let duplicate_ids = duplicate_entries
+            .iter()
+            .filter_map(|(id, entries)| (entries.len() > 1).then_some(id.clone()))
+            .collect::<BTreeSet<String>>();
+
+        let scenarios = items
+            .into_iter()
+            .filter_map(|item| {
+                (!duplicate_ids.contains(&item.scenario.id)).then_some(item.scenario)
+            })
+            .collect::<Vec<Scenario>>();
+
+        let mut errors = parsed.errors;
+        for (scenario_id, entries) in duplicate_entries {
+            if entries.len() <= 1 {
+                continue;
+            }
+
+            let conflict_locations = entries
+                .iter()
+                .map(|(source, path)| format!("{source}:{path}"))
+                .collect::<Vec<String>>();
+            let conflict_paths = entries
+                .iter()
+                .map(|(_, path)| path.clone())
+                .collect::<Vec<String>>();
+
+            for (source, path) in entries {
+                let mut details = BTreeMap::new();
+                details.insert("scenario_id".to_string(), scenario_id.clone());
+                details.insert("conflict_paths".to_string(), conflict_paths.join(", "));
+                details.insert(
+                    "conflict_locations".to_string(),
+                    conflict_locations.join(", "),
+                );
+
+                errors.push(CatalogError::conflict(
+                    format!("Scenario id `{scenario_id}` is duplicated"),
+                    Some(path),
+                    Some(source),
+                    details,
+                ));
+            }
+        }
+
+        ScenarioEnvelope::new(scenarios, errors)
     }
 }
 
@@ -1269,6 +1368,49 @@ mod tests {
                         Some(scenario_ref.path.clone()),
                         Some(self.source_id.clone()),
                     ));
+                }
+
+                let raw = self.docs.get(&scenario_ref.path).ok_or_else(|| {
+                    CatalogError::load(
+                        "No in-memory document found for scenario path",
+                        Some(scenario_ref.path.clone()),
+                        Some(self.source_id.clone()),
+                    )
+                })?;
+
+                Ok(ScenarioDocument::new(
+                    scenario_ref.id.clone(),
+                    raw.clone(),
+                    ScenarioDocumentFormat::Yaml,
+                ))
+            })
+        }
+    }
+
+    #[derive(Debug)]
+    struct VariableDelaySource {
+        source_id: String,
+        refs: Vec<ScenarioRef>,
+        docs: HashMap<String, String>,
+        delays: HashMap<String, Duration>,
+    }
+
+    impl ScenarioSource for VariableDelaySource {
+        fn source_id(&self) -> &str {
+            &self.source_id
+        }
+
+        fn discover_refs(&self) -> Result<Vec<ScenarioRef>, CatalogError> {
+            Ok(self.refs.clone())
+        }
+
+        fn load_document<'a>(
+            &'a self,
+            scenario_ref: &'a ScenarioRef,
+        ) -> BoxFuture<'a, Result<ScenarioDocument, CatalogError>> {
+            Box::pin(async move {
+                if let Some(delay) = self.delays.get(&scenario_ref.path) {
+                    std::thread::sleep(*delay);
                 }
 
                 let raw = self.docs.get(&scenario_ref.path).ok_or_else(|| {
@@ -1862,6 +2004,263 @@ assertions:
         );
     }
 
+    #[test]
+    fn standard_catalog_returns_stable_sorted_scenarios_across_different_load_timings() {
+        let source_id = "memory".to_string();
+        let refs = vec![
+            ScenarioRef {
+                id: "z-last-ref".to_string(),
+                path: "scenarios/auth/z-last.yaml".to_string(),
+                source: source_id.clone(),
+                fingerprint: None,
+                discovered_at: SystemTime::UNIX_EPOCH,
+            },
+            ScenarioRef {
+                id: "a-first-ref".to_string(),
+                path: "scenarios/auth/a-first.yaml".to_string(),
+                source: source_id.clone(),
+                fingerprint: None,
+                discovered_at: SystemTime::UNIX_EPOCH,
+            },
+            ScenarioRef {
+                id: "m-middle-ref".to_string(),
+                path: "scenarios/auth/m-middle.yaml".to_string(),
+                source: source_id.clone(),
+                fingerprint: None,
+                discovered_at: SystemTime::UNIX_EPOCH,
+            },
+        ];
+        let docs = HashMap::from([
+            (
+                "scenarios/auth/a-first.yaml".to_string(),
+                valid_scenario_yaml("a-first"),
+            ),
+            (
+                "scenarios/auth/m-middle.yaml".to_string(),
+                valid_scenario_yaml("m-middle"),
+            ),
+            (
+                "scenarios/auth/z-last.yaml".to_string(),
+                valid_scenario_yaml("z-last"),
+            ),
+        ]);
+
+        let source_run_one = VariableDelaySource {
+            source_id: source_id.clone(),
+            refs: refs.clone(),
+            docs: docs.clone(),
+            delays: HashMap::from([
+                (
+                    "scenarios/auth/a-first.yaml".to_string(),
+                    Duration::from_millis(25),
+                ),
+                (
+                    "scenarios/auth/m-middle.yaml".to_string(),
+                    Duration::from_millis(1),
+                ),
+                (
+                    "scenarios/auth/z-last.yaml".to_string(),
+                    Duration::from_millis(10),
+                ),
+            ]),
+        };
+        let source_run_two = VariableDelaySource {
+            source_id,
+            refs: refs.clone(),
+            docs,
+            delays: HashMap::from([
+                (
+                    "scenarios/auth/a-first.yaml".to_string(),
+                    Duration::from_millis(1),
+                ),
+                (
+                    "scenarios/auth/m-middle.yaml".to_string(),
+                    Duration::from_millis(20),
+                ),
+                (
+                    "scenarios/auth/z-last.yaml".to_string(),
+                    Duration::from_millis(30),
+                ),
+            ]),
+        };
+        let catalog_run_one = StandardScenarioCatalog::new(
+            source_run_one,
+            StandardScenarioCatalogConfig {
+                io_concurrency_limit: 3,
+            },
+        )
+        .expect("catalog should build");
+        let catalog_run_two = StandardScenarioCatalog::new(
+            source_run_two,
+            StandardScenarioCatalogConfig {
+                io_concurrency_limit: 3,
+            },
+        )
+        .expect("catalog should build");
+        let runtime = tokio_runtime();
+
+        let first = runtime.block_on(catalog_run_one.load_scenarios(&refs));
+        let second = runtime.block_on(catalog_run_two.load_scenarios(&refs));
+
+        assert!(first.errors.is_empty());
+        assert!(second.errors.is_empty());
+        assert_eq!(first.items, second.items);
+        assert_eq!(
+            first
+                .items
+                .iter()
+                .map(|scenario| scenario.id.as_str())
+                .collect::<Vec<&str>>(),
+            vec!["a-first", "m-middle", "z-last"]
+        );
+    }
+
+    #[test]
+    fn duplicate_scenario_ids_emit_conflict_errors_with_both_paths() {
+        let duplicate_path_one = "scenarios/auth/duplicate-one.yaml".to_string();
+        let duplicate_path_two = "scenarios/billing/duplicate-two.yaml".to_string();
+        let unique_path = "scenarios/auth/unique.yaml".to_string();
+
+        let source = MockSource {
+            source_id: "memory".to_string(),
+            refs: vec![
+                ScenarioRef {
+                    id: "duplicate-one-ref".to_string(),
+                    path: duplicate_path_one.clone(),
+                    source: "memory".to_string(),
+                    fingerprint: None,
+                    discovered_at: SystemTime::UNIX_EPOCH,
+                },
+                ScenarioRef {
+                    id: "duplicate-two-ref".to_string(),
+                    path: duplicate_path_two.clone(),
+                    source: "memory".to_string(),
+                    fingerprint: None,
+                    discovered_at: SystemTime::UNIX_EPOCH,
+                },
+                ScenarioRef {
+                    id: "unique-ref".to_string(),
+                    path: unique_path.clone(),
+                    source: "memory".to_string(),
+                    fingerprint: None,
+                    discovered_at: SystemTime::UNIX_EPOCH,
+                },
+            ],
+            docs: HashMap::from([
+                (duplicate_path_one.clone(), valid_scenario_yaml("same-id")),
+                (duplicate_path_two.clone(), valid_scenario_yaml("same-id")),
+                (unique_path, valid_scenario_yaml("unique-id")),
+            ]),
+        };
+        let catalog =
+            StandardScenarioCatalog::new(source, StandardScenarioCatalogConfig::default())
+                .expect("catalog should build");
+        let runtime = tokio_runtime();
+
+        let parsed = runtime.block_on(catalog.load_scenarios(&catalog.discover().items));
+
+        assert_eq!(parsed.items.len(), 1);
+        assert_eq!(parsed.items[0].id, "unique-id");
+
+        let conflict_errors = parsed
+            .errors
+            .iter()
+            .filter(|error| error.code == CatalogErrorCode::Conflict)
+            .collect::<Vec<&CatalogError>>();
+        assert_eq!(conflict_errors.len(), 2);
+        assert!(
+            conflict_errors
+                .iter()
+                .all(|error| error.stage == CatalogStage::Catalog)
+        );
+        assert_eq!(
+            conflict_errors
+                .iter()
+                .map(|error| error.path.clone())
+                .collect::<HashSet<Option<String>>>(),
+            HashSet::from([
+                Some(duplicate_path_one.clone()),
+                Some(duplicate_path_two.clone()),
+            ])
+        );
+        assert!(conflict_errors.iter().all(|error| {
+            error.details.get("scenario_id").map(String::as_str) == Some("same-id")
+                && error.details.get("conflict_paths").is_some_and(|paths| {
+                    paths.contains(&duplicate_path_one) && paths.contains(&duplicate_path_two)
+                })
+        }));
+    }
+
+    #[test]
+    fn all_invalid_documents_return_empty_success_and_complete_error_collection() {
+        let source = MockSource {
+            source_id: "memory".to_string(),
+            refs: vec![
+                ScenarioRef {
+                    id: "malformed-ref".to_string(),
+                    path: "scenarios/auth/malformed.yaml".to_string(),
+                    source: "memory".to_string(),
+                    fingerprint: None,
+                    discovered_at: SystemTime::UNIX_EPOCH,
+                },
+                ScenarioRef {
+                    id: "missing-steps-ref".to_string(),
+                    path: "scenarios/auth/missing-steps.yaml".to_string(),
+                    source: "memory".to_string(),
+                    fingerprint: None,
+                    discovered_at: SystemTime::UNIX_EPOCH,
+                },
+                ScenarioRef {
+                    id: "missing-assertions-ref".to_string(),
+                    path: "scenarios/auth/missing-assertions.yaml".to_string(),
+                    source: "memory".to_string(),
+                    fingerprint: None,
+                    discovered_at: SystemTime::UNIX_EPOCH,
+                },
+            ],
+            docs: HashMap::from([
+                (
+                    "scenarios/auth/malformed.yaml".to_string(),
+                    "id: malformed\nservice: auth\nsteps: [\nassertions:\n  - path: $.status\n    equals: 200\n"
+                        .to_string(),
+                ),
+                (
+                    "scenarios/auth/missing-steps.yaml".to_string(),
+                    "id: missing-steps\nservice: auth\nassertions:\n  - path: $.status\n    equals: 200\n"
+                        .to_string(),
+                ),
+                (
+                    "scenarios/auth/missing-assertions.yaml".to_string(),
+                    "id: missing-assertions\nservice: auth\nsteps:\n  - order: 1\n    action: POST /login\n"
+                        .to_string(),
+                ),
+            ]),
+        };
+        let catalog =
+            StandardScenarioCatalog::new(source, StandardScenarioCatalogConfig::default())
+                .expect("catalog should build");
+        let runtime = tokio_runtime();
+
+        let parsed = runtime.block_on(catalog.load_scenarios(&catalog.discover().items));
+
+        assert!(parsed.items.is_empty());
+        assert_eq!(parsed.errors.len(), 3);
+        assert!(
+            parsed
+                .errors
+                .iter()
+                .any(|error| error.code == CatalogErrorCode::ParseFailure)
+        );
+        assert_eq!(
+            parsed
+                .errors
+                .iter()
+                .filter(|error| error.code == CatalogErrorCode::ValidationFailure)
+                .count(),
+            2
+        );
+    }
+
     fn build_refs_and_docs(
         total: usize,
         source_id: &str,
@@ -1883,6 +2282,12 @@ assertions:
         }
 
         (refs, docs)
+    }
+
+    fn valid_scenario_yaml(id: &str) -> String {
+        format!(
+            "id: {id}\nservice: auth\nsteps:\n  - order: 1\n    action: POST /login\nassertions:\n  - path: $.status\n    equals: 200\n"
+        )
     }
 
     fn update_peak(peak: &AtomicUsize, candidate: usize) {
