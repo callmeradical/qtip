@@ -82,27 +82,25 @@ pub fn evaluate_checks(checks: &[Check], evidence: &Evidence) -> Vec<String> {
                 }
             }
             CheckType::Stdout => {
-                if let (Some(stdout), Some(expected)) = (&evidence.stdout, &check.expected) {
-                    if let Some(expected_str) = expected.as_str() {
-                        if !stdout.contains(expected_str) {
-                            failures.push(format!(
-                                "Check stdout failed: stdout does not contain {} for AC {}",
-                                expected_str, check.acceptance_criteria,
-                            ));
-                        }
-                    }
+                if let (Some(stdout), Some(expected)) = (&evidence.stdout, &check.expected)
+                    && let Some(expected_str) = expected.as_str()
+                    && !stdout.contains(expected_str)
+                {
+                    failures.push(format!(
+                        "Check stdout failed: stdout does not contain {} for AC {}",
+                        expected_str, check.acceptance_criteria,
+                    ));
                 }
             }
             CheckType::Stderr => {
-                if let (Some(stderr), Some(expected)) = (&evidence.stderr, &check.expected) {
-                    if let Some(expected_str) = expected.as_str() {
-                        if !stderr.contains(expected_str) {
-                            failures.push(format!(
-                                "Check stderr failed: stderr does not contain {} for AC {}",
-                                expected_str, check.acceptance_criteria,
-                            ));
-                        }
-                    }
+                if let (Some(stderr), Some(expected)) = (&evidence.stderr, &check.expected)
+                    && let Some(expected_str) = expected.as_str()
+                    && !stderr.contains(expected_str)
+                {
+                    failures.push(format!(
+                        "Check stderr failed: stderr does not contain {} for AC {}",
+                        expected_str, check.acceptance_criteria,
+                    ));
                 }
             }
             CheckType::LogContains => {
@@ -160,12 +158,12 @@ fn evaluate_json_path_check(check: &Check, evidence: &Evidence, failures: &mut V
                 path, check.acceptance_criteria,
             ));
         }
-    } else if let Some(expected) = &check.expected {
-        if results[0] != expected {
-            failures.push(format!(
-                "Check json_path failed: expected {} at {}, got {} for AC {}",
-                expected, path, results[0], check.acceptance_criteria,
-            ));
-        }
+    } else if let Some(expected) = &check.expected
+        && results[0] != expected
+    {
+        failures.push(format!(
+            "Check json_path failed: expected {} at {}, got {} for AC {}",
+            expected, path, results[0], check.acceptance_criteria,
+        ));
     }
 }

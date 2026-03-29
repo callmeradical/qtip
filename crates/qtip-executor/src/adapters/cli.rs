@@ -5,6 +5,12 @@ pub struct CliAdapter {
     timeout_secs: u64,
 }
 
+impl Default for CliAdapter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CliAdapter {
     pub fn new() -> Self {
         Self { timeout_secs: 30 }

@@ -52,6 +52,12 @@ pub struct ScenarioExecutor {
     adapters: HashMap<String, Box<dyn Adapter>>,
 }
 
+impl Default for ScenarioExecutor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ScenarioExecutor {
     pub fn new() -> Self {
         Self {

@@ -5,6 +5,12 @@ pub struct ApiAdapter {
     client: reqwest::Client,
 }
 
+impl Default for ApiAdapter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ApiAdapter {
     pub fn new() -> Self {
         Self {

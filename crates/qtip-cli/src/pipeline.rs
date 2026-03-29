@@ -101,53 +101,50 @@ fn to_executable(scenario: &ScenarioFile, manifest: &SubjectManifest) -> Executa
         .collect();
 
     // For API interactions, resolve the full URL from manifest
-    if scenario.interaction.interaction_type == "api" {
-        if let Some(request) = scenario.interaction.params.get("request") {
-            if let Some(path) = request.get("path").and_then(|p| p.as_str()) {
-                let service = scenario
-                    .interaction
-                    .params
-                    .get("service")
-                    .and_then(|s| s.as_str());
+    if scenario.interaction.interaction_type == "api"
+        && let Some(request) = scenario.interaction.params.get("request")
+        && let Some(path) = request.get("path").and_then(|p| p.as_str())
+    {
+        let service = scenario
+            .interaction
+            .params
+            .get("service")
+            .and_then(|s| s.as_str());
 
-                let base_url = manifest
-                    .interfaces
-                    .iter()
-                    .find(|i| {
-                        i.interface_type == "api"
-                            && (service.is_none() || i.name.as_deref() == service)
-                    })
-                    .and_then(|i| i.base_url.as_deref())
-                    .unwrap_or("http://localhost");
+        let base_url = manifest
+            .interfaces
+            .iter()
+            .find(|i| {
+                i.interface_type == "api"
+                    && (service.is_none() || i.name.as_deref() == service)
+            })
+            .and_then(|i| i.base_url.as_deref())
+            .unwrap_or("http://localhost");
 
-                let url = format!("{base_url}{path}");
-                params.insert("url".to_string(), serde_json::Value::String(url));
+        let url = format!("{base_url}{path}");
+        params.insert("url".to_string(), serde_json::Value::String(url));
 
-                if let Some(method) = request.get("method") {
-                    params.insert("method".to_string(), method.clone());
-                }
-                if let Some(body) = request.get("body") {
-                    params.insert("body".to_string(), body.clone());
-                }
-                if let Some(headers) = request.get("headers") {
-                    params.insert("headers".to_string(), headers.clone());
-                }
-            }
+        if let Some(method) = request.get("method") {
+            params.insert("method".to_string(), method.clone());
+        }
+        if let Some(body) = request.get("body") {
+            params.insert("body".to_string(), body.clone());
+        }
+        if let Some(headers) = request.get("headers") {
+            params.insert("headers".to_string(), headers.clone());
         }
     }
 
     // For log interactions, inject log_path from manifest
-    if scenario.interaction.interaction_type == "logs" {
-        if let Some(obs) = &manifest.observability {
-            if let Some(logs) = &obs.logs {
-                if let Some(path) = &logs.path {
-                    params.insert(
-                        "log_path".to_string(),
-                        serde_json::Value::String(path.clone()),
-                    );
-                }
-            }
-        }
+    if scenario.interaction.interaction_type == "logs"
+        && let Some(obs) = &manifest.observability
+        && let Some(logs) = &obs.logs
+        && let Some(path) = &logs.path
+    {
+        params.insert(
+            "log_path".to_string(),
+            serde_json::Value::String(path.clone()),
+        );
     }
 
     let checks = scenario

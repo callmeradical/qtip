@@ -3,6 +3,12 @@ use crate::executor::{Adapter, BoxFuture, Interaction};
 
 pub struct LogAdapter;
 
+impl Default for LogAdapter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl LogAdapter {
     pub fn new() -> Self {
         Self
