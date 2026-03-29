@@ -15,6 +15,7 @@
     "rust:clippy": "cargo qg-clippy",
     "rust:test": "cargo qg-test",
     "rust:check": "./scripts/rust-quality-gates.sh",
+    "rust:bench:catalog": "./scripts/benchmark-rust-catalog.sh",
     "docs:build": "zensical build",
     "docs:serve": "zensical serve",
     "qtip:evaluate": "ts-node src/cli.ts",

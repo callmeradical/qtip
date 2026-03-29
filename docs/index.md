@@ -25,3 +25,7 @@ Engineering teams need a standardized way to validate that software systems meet
 ## Product Planning
 
 - [PRD: Local Agent Evaluation Experience](./prd-local-agent-evaluation-experience.md)
+
+## Engineering Notes
+
+- [Rust Catalog Performance Envelope](./rust-catalog-performance.md)

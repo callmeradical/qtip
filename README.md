@@ -93,7 +93,12 @@ npm run rust:check
 npm run rust:fmt
 npm run rust:clippy
 npm run rust:test
+
+# Benchmark deep discovery + load path (US-008)
+npm run rust:bench:catalog
 ```
+
+Benchmark details and the current baseline report are documented in `docs/rust-catalog-performance.md`.
 
 If `cargo` is missing (`cargo: command not found`), install the Rust toolchain:
 

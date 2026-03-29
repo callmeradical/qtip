@@ -1,0 +1,15 @@
+id: {{id}}
+service: auth
+steps:
+  - order: 1
+    action: POST /login
+    payload:
+      username: bench-user-{{index}}
+      password: secret
+assertions:
+  - path: $.status
+    equals: 200
+tags:
+  - perf
+metadata:
+  owner: qtip-catalog-benchmark
