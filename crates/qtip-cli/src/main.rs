@@ -37,6 +37,10 @@ struct Cli {
     /// Output format
     #[arg(long, global = true, default_value = "text")]
     output: OutputFormat,
+
+    /// Enable verbose output
+    #[arg(short, long, global = true)]
+    verbose: bool,
 }
 
 #[derive(Clone, ValueEnum)]
@@ -131,6 +135,8 @@ async fn main() -> ExitCode {
 }
 
 async fn run_evaluate(cli: &Cli) -> ExitCode {
+    let verbose = cli.verbose;
+
     // Discover manifest
     let manifest_path = match cli.manifest.clone().or_else(discover_manifest) {
         Some(p) => p,
@@ -140,6 +146,10 @@ async fn run_evaluate(cli: &Cli) -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
+
+    if verbose {
+        eprintln!("[verbose] Using manifest: {}", manifest_path.display());
+    }
 
     // Load manifest
     let manifest_content = match std::fs::read_to_string(&manifest_path) {
@@ -156,6 +166,16 @@ async fn run_evaluate(cli: &Cli) -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
+
+    if verbose {
+        eprintln!("[verbose] Project: {}", manifest.project_id);
+        eprintln!("[verbose] Capabilities: {:?}", manifest.capabilities);
+        eprintln!(
+            "[verbose] Interfaces: {:?}",
+            manifest.interfaces.iter().map(|i| i.interface_type()).collect::<Vec<_>>()
+        );
+        eprintln!("[verbose] Environment: {}", manifest.environment.name);
+    }
 
     // Resolve scenarios directory: CLI flags > manifest config > error
     let scenarios_dir = if let Some(dir) = &cli.scenarios {
@@ -182,6 +202,10 @@ async fn run_evaluate(cli: &Cli) -> ExitCode {
         return ExitCode::FAILURE;
     };
 
+    if verbose {
+        eprintln!("[verbose] Scenarios directory: {}", scenarios_dir.display());
+    }
+
     // Load scenarios
     let scenarios = match pipeline::load_scenarios(&scenarios_dir) {
         Ok(s) => s,
@@ -191,8 +215,23 @@ async fn run_evaluate(cli: &Cli) -> ExitCode {
         }
     };
 
+    if verbose {
+        eprintln!("[verbose] Loaded {} scenario file(s)", scenarios.len());
+        for s in &scenarios {
+            eprintln!("[verbose]   - {} ({})", s.id, s.name);
+        }
+    }
+
     // Resolve
     let resolved = pipeline::resolve_scenarios(&manifest, &scenarios);
+
+    if verbose {
+        eprintln!("[verbose] Resolved {} scenario(s) for evaluation", resolved.len());
+        let skipped = scenarios.len() - resolved.len();
+        if skipped > 0 {
+            eprintln!("[verbose] Skipped {} scenario(s) (not applicable)", skipped);
+        }
+    }
 
     let is_json = matches!(cli.output, OutputFormat::Json);
 
@@ -208,7 +247,7 @@ async fn run_evaluate(cli: &Cli) -> ExitCode {
     }
 
     // Execute
-    let subject_result = pipeline::execute_subject(&manifest, &resolved).await;
+    let subject_result = pipeline::execute_subject(&manifest, &resolved, verbose).await;
 
     if is_json {
         let report = JsonReport {

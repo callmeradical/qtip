@@ -191,6 +191,7 @@ fn to_executable(scenario: &ScenarioFile, manifest: &SubjectManifest) -> Executa
 pub async fn execute_subject(
     manifest: &SubjectManifest,
     scenarios: &[&ScenarioFile],
+    verbose: bool,
 ) -> SubjectResult {
     let mut executor = ScenarioExecutor::new();
 
@@ -206,8 +207,21 @@ pub async fn execute_subject(
 
     let mut results = Vec::new();
     for scenario in scenarios {
+        if verbose {
+            eprintln!("[verbose] Executing scenario: {} ({})", scenario.id, scenario.interaction.interaction_type);
+        }
         let executable = to_executable(scenario, manifest);
+        if verbose {
+            eprintln!("[verbose]   params: {:?}", executable.interaction.params);
+            eprintln!("[verbose]   checks: {}", executable.checks.len());
+        }
         let result = executor.execute(&executable).await;
+        if verbose {
+            eprintln!("[verbose]   result: {:?}", result.status);
+            for failure in &result.failures {
+                eprintln!("[verbose]   failure: {}", failure);
+            }
+        }
         results.push(result);
     }
 
