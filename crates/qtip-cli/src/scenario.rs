@@ -271,6 +271,10 @@ pub struct Check {
     pub expected: Option<Value>,
     pub path: Option<String>,
     pub exists: Option<bool>,
+    pub head_ref_pattern: Option<String>,
+    pub base_ref: Option<String>,
+    pub title_pattern: Option<String>,
+    pub state: Option<String>,
     pub acceptance_criteria: String,
 }
 

@@ -821,6 +821,7 @@ name = "qtip-executor"
 version = "0.1.0"
 dependencies = [
  "jsonpath-rust",
+ "regex",
  "reqwest",
  "serde",
  "serde_json",

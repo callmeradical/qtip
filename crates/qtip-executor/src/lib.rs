@@ -322,6 +322,75 @@ mod tests {
         assert!(failures[0].contains("AC-8"));
     }
 
+    // -- github_pr_exists checks --
+
+    #[test]
+    fn github_pr_exists_passes_when_head_ref_pattern_matches() {
+        let checks = vec![Check {
+            check_type: CheckType::GithubPrExists,
+            expected: Some(json!({
+                "head_ref_pattern": "smith-loop-.*"
+            })),
+            path: None,
+            exists: None,
+            acceptance_criteria: "AC-9".to_string(),
+        }];
+        let evidence = Evidence::cli(
+            0,
+            r#"[{"headRefName":"smith-loop-123","baseRefName":"main","title":"Test PR","state":"OPEN"}]"#,
+            "",
+        );
+
+        let failures = evaluate_checks(&checks, &evidence);
+        assert!(failures.is_empty());
+    }
+
+    #[test]
+    fn github_pr_exists_fails_when_no_pr_matches_all_filters() {
+        let checks = vec![Check {
+            check_type: CheckType::GithubPrExists,
+            expected: Some(json!({
+                "head_ref_pattern": "smith-loop-.*",
+                "base_ref": "main",
+                "title_pattern": "Create loop .*",
+                "state": "OPEN"
+            })),
+            path: None,
+            exists: None,
+            acceptance_criteria: "AC-9".to_string(),
+        }];
+        let evidence = Evidence::cli(
+            0,
+            r#"[{"headRefName":"smith-loop-123","baseRefName":"develop","title":"Create loop item","state":"OPEN"}]"#,
+            "",
+        );
+
+        let failures = evaluate_checks(&checks, &evidence);
+        assert_eq!(failures.len(), 1);
+        assert!(failures[0].contains("no PR matched filters"));
+        assert!(failures[0].contains("base_ref=`main`"));
+        assert!(failures[0].contains("AC-9"));
+    }
+
+    #[test]
+    fn github_pr_exists_fails_gracefully_for_malformed_json_output() {
+        let checks = vec![Check {
+            check_type: CheckType::GithubPrExists,
+            expected: Some(json!({
+                "head_ref_pattern": "smith-loop-.*"
+            })),
+            path: None,
+            exists: None,
+            acceptance_criteria: "AC-9".to_string(),
+        }];
+        let evidence = Evidence::cli(0, "not-json", "");
+
+        let failures = evaluate_checks(&checks, &evidence);
+        assert_eq!(failures.len(), 1);
+        assert!(failures[0].contains("failed to parse stdout as JSON"));
+        assert!(failures[0].contains("AC-9"));
+    }
+
     // -- multiple checks --
 
     #[test]

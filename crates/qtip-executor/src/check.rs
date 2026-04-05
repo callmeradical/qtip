@@ -1,3 +1,4 @@
+use regex::Regex;
 use serde::Deserialize;
 use serde_json::Value;
 
@@ -7,6 +8,7 @@ pub enum CheckType {
     StatusCode,
     JsonPath,
     LoopState,
+    GithubPrExists,
     Stdout,
     Stderr,
     LogContains,
@@ -128,6 +130,9 @@ pub fn evaluate_checks(checks: &[Check], evidence: &Evidence) -> Vec<String> {
             CheckType::LoopState => {
                 evaluate_loop_state_check(check, evidence, &mut failures);
             }
+            CheckType::GithubPrExists => {
+                evaluate_github_pr_exists_check(check, evidence, &mut failures);
+            }
         }
     }
 
@@ -215,6 +220,193 @@ fn evaluate_loop_state_check(check: &Check, evidence: &Evidence, failures: &mut 
     }
 }
 
+#[derive(Default)]
+struct GithubPrExistsFilters {
+    head_ref_pattern: Option<String>,
+    base_ref: Option<String>,
+    title_pattern: Option<String>,
+    state: Option<String>,
+}
+
+impl GithubPrExistsFilters {
+    fn from_check(check: &Check) -> Result<Self, String> {
+        let Some(raw_filters) = &check.expected else {
+            return Ok(Self::default());
+        };
+        let Some(raw_filters) = raw_filters.as_object() else {
+            return Err("expected filter object in `expected`".to_string());
+        };
+
+        Ok(Self {
+            head_ref_pattern: string_filter(raw_filters, "head_ref_pattern")?,
+            base_ref: string_filter(raw_filters, "base_ref")?,
+            title_pattern: string_filter(raw_filters, "title_pattern")?,
+            state: string_filter(raw_filters, "state")?,
+        })
+    }
+
+    fn describe(&self) -> String {
+        let mut parts = Vec::new();
+
+        if let Some(pattern) = &self.head_ref_pattern {
+            parts.push(format!("head_ref_pattern=`{pattern}`"));
+        }
+        if let Some(base_ref) = &self.base_ref {
+            parts.push(format!("base_ref=`{base_ref}`"));
+        }
+        if let Some(pattern) = &self.title_pattern {
+            parts.push(format!("title_pattern=`{pattern}`"));
+        }
+        if let Some(state) = &self.state {
+            parts.push(format!("state=`{state}`"));
+        }
+
+        if parts.is_empty() {
+            "none".to_string()
+        } else {
+            parts.join(", ")
+        }
+    }
+}
+
+fn string_filter(
+    filters: &serde_json::Map<String, Value>,
+    key: &str,
+) -> Result<Option<String>, String> {
+    match filters.get(key) {
+        None | Some(Value::Null) => Ok(None),
+        Some(Value::String(value)) => Ok(Some(value.clone())),
+        Some(_) => Err(format!("`{key}` must be a string")),
+    }
+}
+
+fn evaluate_github_pr_exists_check(check: &Check, evidence: &Evidence, failures: &mut Vec<String>) {
+    let payload = match loop_state_json_evidence(evidence) {
+        Ok(payload) => payload,
+        Err(message) => {
+            failures.push(format!(
+                "Check github_pr_exists failed: {} for AC {}",
+                message, check.acceptance_criteria
+            ));
+            return;
+        }
+    };
+
+    let Some(prs) = payload.as_array() else {
+        failures.push(format!(
+            "Check github_pr_exists failed: expected JSON array from gh pr list --json, got {} for AC {}",
+            json_type_name(&payload),
+            check.acceptance_criteria
+        ));
+        return;
+    };
+
+    let filters = match GithubPrExistsFilters::from_check(check) {
+        Ok(filters) => filters,
+        Err(message) => {
+            failures.push(format!(
+                "Check github_pr_exists failed: {} for AC {}",
+                message, check.acceptance_criteria
+            ));
+            return;
+        }
+    };
+
+    let head_ref_regex = match compile_filter_regex(
+        filters.head_ref_pattern.as_deref(),
+        "head_ref_pattern",
+        &check.acceptance_criteria,
+        failures,
+    ) {
+        Some(regex) => regex,
+        None => return,
+    };
+    let title_regex = match compile_filter_regex(
+        filters.title_pattern.as_deref(),
+        "title_pattern",
+        &check.acceptance_criteria,
+        failures,
+    ) {
+        Some(regex) => regex,
+        None => return,
+    };
+
+    let matched = prs.iter().any(|pr| {
+        let Some(pr_object) = pr.as_object() else {
+            return false;
+        };
+
+        if let Some(pattern) = &head_ref_regex {
+            let Some(head_ref_name) = pr_object.get("headRefName").and_then(Value::as_str) else {
+                return false;
+            };
+            if !pattern.is_match(head_ref_name) {
+                return false;
+            }
+        }
+
+        if let Some(base_ref) = &filters.base_ref {
+            let Some(actual_base_ref) = pr_object.get("baseRefName").and_then(Value::as_str) else {
+                return false;
+            };
+            if actual_base_ref != base_ref {
+                return false;
+            }
+        }
+
+        if let Some(pattern) = &title_regex {
+            let Some(title) = pr_object.get("title").and_then(Value::as_str) else {
+                return false;
+            };
+            if !pattern.is_match(title) {
+                return false;
+            }
+        }
+
+        if let Some(state) = &filters.state {
+            let Some(actual_state) = pr_object.get("state").and_then(Value::as_str) else {
+                return false;
+            };
+            if !actual_state.eq_ignore_ascii_case(state) {
+                return false;
+            }
+        }
+
+        true
+    });
+
+    if !matched {
+        failures.push(format!(
+            "Check github_pr_exists failed: no PR matched filters ({}) in {} PR(s) for AC {}",
+            filters.describe(),
+            prs.len(),
+            check.acceptance_criteria
+        ));
+    }
+}
+
+fn compile_filter_regex(
+    pattern: Option<&str>,
+    filter_name: &str,
+    acceptance_criteria: &str,
+    failures: &mut Vec<String>,
+) -> Option<Option<Regex>> {
+    let Some(pattern) = pattern else {
+        return Some(None);
+    };
+
+    match Regex::new(pattern) {
+        Ok(regex) => Some(Some(regex)),
+        Err(error) => {
+            failures.push(format!(
+                "Check github_pr_exists failed: invalid `{}` regex `{}` ({}) for AC {}",
+                filter_name, pattern, error, acceptance_criteria
+            ));
+            None
+        }
+    }
+}
+
 fn loop_state_json_evidence(evidence: &Evidence) -> Result<Value, String> {
     if let Some(data) = &evidence.data {
         return Ok(data.clone());
@@ -241,5 +433,16 @@ fn json_value_to_string(value: &Value) -> String {
     match value {
         Value::String(inner) => inner.clone(),
         _ => value.to_string(),
+    }
+}
+
+fn json_type_name(value: &Value) -> &'static str {
+    match value {
+        Value::Null => "null",
+        Value::Bool(_) => "boolean",
+        Value::Number(_) => "number",
+        Value::String(_) => "string",
+        Value::Array(_) => "array",
+        Value::Object(_) => "object",
     }
 }

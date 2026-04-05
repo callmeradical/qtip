@@ -592,15 +592,21 @@ fn to_executable_with_context(
                 "status_code" => CheckType::StatusCode,
                 "json_path" => CheckType::JsonPath,
                 "loop_state" => CheckType::LoopState,
+                "github_pr_exists" => CheckType::GithubPrExists,
                 "stdout" => CheckType::Stdout,
                 "stderr" => CheckType::Stderr,
                 "log_contains" => CheckType::LogContains,
                 "log_not_contains" => CheckType::LogNotContains,
                 _ => CheckType::StatusCode, // fallback
             };
+            let expected = if check_type == CheckType::GithubPrExists {
+                github_pr_exists_expected(c)
+            } else {
+                c.expected.clone()
+            };
             Check {
                 check_type,
-                expected: c.expected.clone(),
+                expected,
                 path: c.path.clone(),
                 exists: c.exists,
                 acceptance_criteria: c.acceptance_criteria.clone(),
@@ -617,6 +623,44 @@ fn to_executable_with_context(
         },
         checks,
     })
+}
+
+fn github_pr_exists_expected(check: &ScenarioCheck) -> Option<serde_json::Value> {
+    let mut expected = match &check.expected {
+        Some(serde_json::Value::Object(object)) => object.clone(),
+        _ => serde_json::Map::new(),
+    };
+
+    if let Some(pattern) = &check.head_ref_pattern {
+        expected.insert(
+            "head_ref_pattern".to_string(),
+            serde_json::Value::String(pattern.clone()),
+        );
+    }
+    if let Some(base_ref) = &check.base_ref {
+        expected.insert(
+            "base_ref".to_string(),
+            serde_json::Value::String(base_ref.clone()),
+        );
+    }
+    if let Some(pattern) = &check.title_pattern {
+        expected.insert(
+            "title_pattern".to_string(),
+            serde_json::Value::String(pattern.clone()),
+        );
+    }
+    if let Some(state) = &check.state {
+        expected.insert(
+            "state".to_string(),
+            serde_json::Value::String(state.clone()),
+        );
+    }
+
+    if expected.is_empty() {
+        check.expected.clone()
+    } else {
+        Some(serde_json::Value::Object(expected))
+    }
 }
 
 fn build_environment_values(manifest: &SubjectManifest) -> HashMap<String, String> {
@@ -1017,6 +1061,57 @@ checks:
         assert_eq!(
             executable.checks[0].expected,
             Some(serde_json::json!("synced"))
+        );
+    }
+
+    #[test]
+    fn to_executable_maps_github_pr_exists_filters() {
+        let scenario_yaml = r#"
+id: TEST-CLI-GITHUB-PR-EXISTS-001
+name: GitHub PR check mapping
+applies_to:
+  capabilities: [test]
+  interfaces: [cli]
+acceptance_criteria:
+  - id: AC-1
+    description: github_pr_exists check maps filters
+interaction:
+  type: cli
+  command: gh pr list --json headRefName,baseRefName,title,state
+checks:
+  - type: github_pr_exists
+    head_ref_pattern: smith-loop-.*
+    base_ref: main
+    title_pattern: "Add loop .*"
+    state: OPEN
+    acceptance_criteria: AC-1
+"#;
+        let scenario: ScenarioFile = serde_yaml::from_str(scenario_yaml).expect("parse scenario");
+        let (interaction, checks) = scenario.as_single().expect("single scenario");
+
+        let manifest: SubjectManifest = serde_json::from_str(
+            r#"{
+  "projectId": "github-pr-exists-map",
+  "environment": "local",
+  "interfaces": ["cli"],
+  "capabilities": ["test"]
+}"#,
+        )
+        .expect("manifest should parse");
+
+        let executable = to_executable(&scenario, interaction, checks, &manifest)
+            .expect("scenario conversion should succeed");
+
+        assert_eq!(executable.checks.len(), 1);
+        assert_eq!(executable.checks[0].check_type, CheckType::GithubPrExists);
+        assert_eq!(
+            executable.checks[0].expected,
+            Some(serde_json::json!({
+                "head_ref_pattern": "smith-loop-.*",
+                "base_ref": "main",
+                "title_pattern": "Add loop .*",
+                "state": "OPEN"
+            }))
         );
     }
 

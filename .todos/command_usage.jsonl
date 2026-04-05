@@ -63,3 +63,4 @@
 {"ts":"2026-04-05T01:52:56.668513-04:00","cmd":"usage","flags":{"quiet":"true"},"session":"ses_aaf4c3","ok":true,"dur_ms":66}
 {"ts":"2026-04-05T01:57:03.024347-04:00","cmd":"usage","flags":{"new-session":"true"},"session":"ses_392f07","ok":true,"dur_ms":65}
 {"ts":"2026-04-05T01:57:14.411558-04:00","cmd":"usage","flags":{"quiet":"true"},"session":"ses_392f07","ok":true,"dur_ms":76}
+{"ts":"2026-04-05T02:01:09.008131-04:00","cmd":"usage","flags":{"new-session":"true"},"session":"ses_4bcd8c","ok":true,"dur_ms":63}
