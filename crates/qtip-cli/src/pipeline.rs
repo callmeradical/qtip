@@ -591,6 +591,7 @@ fn to_executable_with_context(
             let check_type = match c.check_type.as_str() {
                 "status_code" => CheckType::StatusCode,
                 "json_path" => CheckType::JsonPath,
+                "loop_state" => CheckType::LoopState,
                 "stdout" => CheckType::Stdout,
                 "stderr" => CheckType::Stderr,
                 "log_contains" => CheckType::LogContains,
@@ -974,6 +975,49 @@ checks:
         .unwrap_err();
 
         assert!(error.contains("Unresolved variables: loop_id"));
+    }
+
+    #[test]
+    fn to_executable_maps_loop_state_check_type() {
+        let scenario_yaml = r#"
+id: TEST-CLI-LOOP-STATE-001
+name: Loop state check mapping
+applies_to:
+  capabilities: [test]
+  interfaces: [cli]
+acceptance_criteria:
+  - id: AC-1
+    description: loop_state check maps to executor type
+interaction:
+  type: cli
+  command: smith loop inspect --json
+checks:
+  - type: loop_state
+    expected: synced
+    acceptance_criteria: AC-1
+"#;
+        let scenario: ScenarioFile = serde_yaml::from_str(scenario_yaml).expect("parse scenario");
+        let (interaction, checks) = scenario.as_single().expect("single scenario");
+
+        let manifest: SubjectManifest = serde_json::from_str(
+            r#"{
+  "projectId": "loop-state-map",
+  "environment": "local",
+  "interfaces": ["cli"],
+  "capabilities": ["test"]
+}"#,
+        )
+        .expect("manifest should parse");
+
+        let executable = to_executable(&scenario, interaction, checks, &manifest)
+            .expect("scenario conversion should succeed");
+
+        assert_eq!(executable.checks.len(), 1);
+        assert_eq!(executable.checks[0].check_type, CheckType::LoopState);
+        assert_eq!(
+            executable.checks[0].expected,
+            Some(serde_json::json!("synced"))
+        );
     }
 
     #[derive(Clone)]

@@ -286,7 +286,7 @@
     {
       "id": "US-007",
       "title": "Add Warn-Only Check Behavior",
-      "status": "in_progress",
+      "status": "done",
       "dependsOn": [
         "US-005"
       ],
@@ -298,13 +298,13 @@
         "Warnings are visible in both text and JSON outputs."
       ],
       "startedAt": "2026-04-05T05:52:38.114514+00:00",
-      "completedAt": null,
-      "updatedAt": "2026-04-05T05:52:38.114746+00:00"
+      "completedAt": "2026-04-05T05:56:44.688101+00:00",
+      "updatedAt": "2026-04-05T05:56:44.687939+00:00"
     },
     {
       "id": "US-008",
       "title": "Implement loop_state Check Type",
-      "status": "open",
+      "status": "in_progress",
       "dependsOn": [
         "US-005"
       ],
@@ -314,7 +314,10 @@
         "Example: expected `synced` against `{\"state\":\"synced\"}` passes with clear pass details.",
         "Negative case: expected `synced` vs actual `failed` returns explicit mismatch error with expected and actual values.",
         "Malformed or non-JSON evidence yields graceful check failure without panic."
-      ]
+      ],
+      "startedAt": "2026-04-05T05:56:46.793364+00:00",
+      "completedAt": null,
+      "updatedAt": "2026-04-05T05:56:46.793582+00:00"
     },
     {
       "id": "US-009",

@@ -255,6 +255,73 @@ mod tests {
         assert!(failures[0].contains("got 500"));
     }
 
+    // -- loop_state checks --
+
+    #[test]
+    fn loop_state_passes_when_root_state_matches_expected() {
+        let checks = vec![Check {
+            check_type: CheckType::LoopState,
+            expected: Some(json!("synced")),
+            path: None,
+            exists: None,
+            acceptance_criteria: "AC-8".to_string(),
+        }];
+        let evidence = Evidence::cli(0, r#"{"state":"synced"}"#, "");
+
+        let failures = evaluate_checks(&checks, &evidence);
+        assert!(failures.is_empty());
+    }
+
+    #[test]
+    fn loop_state_passes_when_record_state_matches_expected() {
+        let checks = vec![Check {
+            check_type: CheckType::LoopState,
+            expected: Some(json!("synced")),
+            path: None,
+            exists: None,
+            acceptance_criteria: "AC-8".to_string(),
+        }];
+        let evidence = Evidence::cli(0, r#"{"record":{"state":"synced"}}"#, "");
+
+        let failures = evaluate_checks(&checks, &evidence);
+        assert!(failures.is_empty());
+    }
+
+    #[test]
+    fn loop_state_fails_when_state_differs_from_expected() {
+        let checks = vec![Check {
+            check_type: CheckType::LoopState,
+            expected: Some(json!("synced")),
+            path: None,
+            exists: None,
+            acceptance_criteria: "AC-8".to_string(),
+        }];
+        let evidence = Evidence::cli(0, r#"{"state":"failed"}"#, "");
+
+        let failures = evaluate_checks(&checks, &evidence);
+        assert_eq!(failures.len(), 1);
+        assert!(failures[0].contains("expected `synced`"));
+        assert!(failures[0].contains("got `failed`"));
+        assert!(failures[0].contains("AC-8"));
+    }
+
+    #[test]
+    fn loop_state_fails_gracefully_for_non_json_cli_output() {
+        let checks = vec![Check {
+            check_type: CheckType::LoopState,
+            expected: Some(json!("synced")),
+            path: None,
+            exists: None,
+            acceptance_criteria: "AC-8".to_string(),
+        }];
+        let evidence = Evidence::cli(0, "this is not json", "");
+
+        let failures = evaluate_checks(&checks, &evidence);
+        assert_eq!(failures.len(), 1);
+        assert!(failures[0].contains("failed to parse stdout as JSON"));
+        assert!(failures[0].contains("AC-8"));
+    }
+
     // -- multiple checks --
 
     #[test]
