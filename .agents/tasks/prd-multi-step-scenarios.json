@@ -195,7 +195,7 @@
     {
       "id": "US-002",
       "title": "Validate Workflow Parsing and Backward Compatibility",
-      "status": "in_progress",
+      "status": "done",
       "dependsOn": [
         "US-001"
       ],
@@ -207,13 +207,13 @@
         "Parser errors identify the offending field path for faster fixes."
       ],
       "startedAt": "2026-04-05T05:25:58.418692+00:00",
-      "completedAt": null,
-      "updatedAt": "2026-04-05T05:25:58.418916+00:00"
+      "completedAt": "2026-04-05T05:31:02.539437+00:00",
+      "updatedAt": "2026-04-05T05:31:02.539291+00:00"
     },
     {
       "id": "US-003",
       "title": "Implement Variable Resolver",
-      "status": "open",
+      "status": "in_progress",
       "dependsOn": [
         "US-001"
       ],
@@ -223,7 +223,10 @@
         "Example: if env has `TEST_REPO=org/repo` and outputs also include `TEST_REPO`, resolution uses the environment value.",
         "Negative case: unresolved tokens like `$loop_id` fail step preparation and list unresolved variable names.",
         "Example: `$$HOME` renders as literal `$HOME` rather than attempting substitution."
-      ]
+      ],
+      "startedAt": "2026-04-05T05:31:04.644231+00:00",
+      "completedAt": null,
+      "updatedAt": "2026-04-05T05:31:04.644451+00:00"
     },
     {
       "id": "US-004",

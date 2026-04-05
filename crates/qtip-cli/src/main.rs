@@ -4,6 +4,7 @@ mod cache;
 mod init;
 mod install;
 mod pipeline;
+mod variable_resolver;
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;

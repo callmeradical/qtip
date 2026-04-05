@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::path::Path;
 
 use qtip_executor::check::{Check, CheckType, Evidence};
@@ -12,6 +13,7 @@ use qtip_resolver::{
 use crate::scenario::{
     Check as ScenarioCheck, Interaction as ScenarioInteraction, ScenarioFile, SubjectManifest,
 };
+use crate::variable_resolver::{ResolveContext, resolve_json_value};
 
 #[derive(Debug)]
 pub struct SubjectResult {
@@ -101,19 +103,51 @@ fn to_executable(
     interaction: &ScenarioInteraction,
     checks: &[ScenarioCheck],
     manifest: &SubjectManifest,
-) -> ExecutableScenario {
-    let mut params: std::collections::HashMap<String, serde_json::Value> = interaction
-        .params
+) -> Result<ExecutableScenario, String> {
+    let environment_values = build_environment_values(manifest);
+    let step_outputs = HashMap::new();
+    to_executable_with_context(
+        scenario,
+        interaction,
+        checks,
+        manifest,
+        &environment_values,
+        &step_outputs,
+    )
+}
+
+fn to_executable_with_context(
+    scenario: &ScenarioFile,
+    interaction: &ScenarioInteraction,
+    checks: &[ScenarioCheck],
+    manifest: &SubjectManifest,
+    environment_values: &HashMap<String, String>,
+    step_outputs: &HashMap<String, String>,
+) -> Result<ExecutableScenario, String> {
+    let context = ResolveContext::new(environment_values, step_outputs);
+    let resolved_params_value =
+        resolve_json_value(&serde_json::Value::Object(interaction.params.clone()), &context)
+            .map_err(|error| {
+                format!(
+                    "Scenario `{}` interaction template resolution failed: {error}",
+                    scenario.id
+                )
+            })?;
+    let resolved_params = resolved_params_value
+        .as_object()
+        .ok_or_else(|| "Resolved interaction params must be a JSON object".to_string())?;
+
+    let mut params: HashMap<String, serde_json::Value> = resolved_params
         .iter()
         .map(|(k, v)| (k.clone(), v.clone()))
         .collect();
 
     // For API interactions, resolve the full URL from manifest
     if interaction.interaction_type == "api"
-        && let Some(request) = interaction.params.get("request")
+        && let Some(request) = resolved_params.get("request")
         && let Some(path) = request.get("path").and_then(|p| p.as_str())
     {
-        let service = interaction.params.get("service").and_then(|s| s.as_str());
+        let service = resolved_params.get("service").and_then(|s| s.as_str());
 
         let base_url = manifest
             .interfaces
@@ -176,7 +210,7 @@ fn to_executable(
         })
         .collect();
 
-    ExecutableScenario {
+    Ok(ExecutableScenario {
         id: scenario.id.clone(),
         name: scenario.name.clone(),
         interaction: ExecInteraction {
@@ -184,6 +218,31 @@ fn to_executable(
             params,
         },
         checks,
+    })
+}
+
+fn build_environment_values(manifest: &SubjectManifest) -> HashMap<String, String> {
+    let mut values = HashMap::new();
+
+    for (key, value) in &manifest.environment.fields {
+        if let Some(scalar) = scalar_value_to_string(value) {
+            values.insert(key.clone(), scalar);
+        }
+    }
+
+    for (key, value) in std::env::vars() {
+        values.insert(key, value);
+    }
+
+    values
+}
+
+fn scalar_value_to_string(value: &serde_json::Value) -> Option<String> {
+    match value {
+        serde_json::Value::String(v) => Some(v.clone()),
+        serde_json::Value::Number(v) => Some(v.to_string()),
+        serde_json::Value::Bool(v) => Some(v.to_string()),
+        _ => None,
     }
 }
 
@@ -226,7 +285,21 @@ pub async fn execute_subject(
                 scenario.kind_label()
             );
         }
-        let executable = to_executable(scenario, interaction, checks, manifest);
+        let executable = match to_executable(scenario, interaction, checks, manifest) {
+            Ok(executable) => executable,
+            Err(message) => {
+                if verbose {
+                    eprintln!("[verbose] {message}");
+                }
+                results.push(EvaluationResult {
+                    scenario_id: scenario.id.clone(),
+                    status: EvaluationStatus::Error,
+                    evidence: Evidence::cli(1, "", ""),
+                    failures: vec![message],
+                });
+                continue;
+            }
+        };
         if verbose {
             eprintln!("[verbose]   params: {:?}", executable.interaction.params);
             eprintln!("[verbose]   checks: {}", executable.checks.len());
@@ -259,6 +332,7 @@ pub async fn execute_subject(
 mod tests {
     use super::*;
     use qtip_executor::executor::EvaluationStatus;
+    use std::collections::HashMap;
     use std::path::Path;
 
     fn read_fixture(path: &str) -> String {
@@ -305,5 +379,205 @@ mod tests {
         assert_eq!(result.results[0].scenario_id, "TEST-CLI-HELLO");
         assert_eq!(result.results[0].status, EvaluationStatus::Passed);
         assert!(result.results[0].failures.is_empty());
+    }
+
+    #[test]
+    fn to_executable_resolves_cli_command_with_env_precedence_and_escape() {
+        let scenario_yaml = r#"
+id: TEST-CLI-RESOLVE-001
+name: Resolve CLI vars
+applies_to:
+  capabilities: [test]
+  interfaces: [cli]
+acceptance_criteria:
+  - id: AC-1
+    description: command resolves
+interaction:
+  type: cli
+  command: smith --repo $TEST_REPO && echo $$HOME
+checks:
+  - type: status_code
+    expected: 0
+    acceptance_criteria: AC-1
+"#;
+        let scenario: ScenarioFile = serde_yaml::from_str(scenario_yaml).unwrap();
+        let (interaction, checks) = scenario.as_single().unwrap();
+
+        let manifest: SubjectManifest = serde_json::from_str(
+            r#"{
+  "projectId": "resolve-cli",
+  "environment": "local",
+  "interfaces": ["cli"],
+  "capabilities": ["test"]
+}"#,
+        )
+        .unwrap();
+
+        let env = HashMap::from([("TEST_REPO".to_string(), "org/repo".to_string())]);
+        let outputs = HashMap::from([("TEST_REPO".to_string(), "from-output".to_string())]);
+
+        let executable = to_executable_with_context(
+            &scenario,
+            interaction,
+            checks,
+            &manifest,
+            &env,
+            &outputs,
+        )
+        .unwrap();
+
+        assert_eq!(
+            executable.interaction.params["command"],
+            "smith --repo org/repo && echo $HOME"
+        );
+    }
+
+    #[test]
+    fn to_executable_resolves_api_and_log_string_fields() {
+        let api_yaml = r#"
+id: TEST-API-RESOLVE-001
+name: Resolve API vars
+applies_to:
+  capabilities: [test]
+  interfaces: [api]
+acceptance_criteria:
+  - id: AC-1
+    description: api resolves
+interaction:
+  type: api
+  service: repo
+  request:
+    method: POST
+    path: /repos/$TEST_REPO/pulls
+    body:
+      title: Sync $PR_ID
+    headers:
+      Authorization: Bearer $TOKEN
+checks:
+  - type: status_code
+    expected: 200
+    acceptance_criteria: AC-1
+"#;
+        let api_scenario: ScenarioFile = serde_yaml::from_str(api_yaml).unwrap();
+        let (api_interaction, api_checks) = api_scenario.as_single().unwrap();
+
+        let manifest: SubjectManifest = serde_json::from_str(
+            r#"{
+  "projectId": "resolve-api",
+  "environment": "local",
+  "interfaces": [
+    { "type": "api", "name": "repo", "baseUrl": "https://api.example.com" }
+  ],
+  "capabilities": ["test"]
+}"#,
+        )
+        .unwrap();
+
+        let env = HashMap::from([
+            ("TEST_REPO".to_string(), "org/repo".to_string()),
+            ("PR_ID".to_string(), "42".to_string()),
+            ("TOKEN".to_string(), "abc123".to_string()),
+        ]);
+        let outputs = HashMap::new();
+
+        let executable = to_executable_with_context(
+            &api_scenario,
+            api_interaction,
+            api_checks,
+            &manifest,
+            &env,
+            &outputs,
+        )
+        .unwrap();
+
+        assert_eq!(
+            executable.interaction.params["url"],
+            "https://api.example.com/repos/org/repo/pulls"
+        );
+        assert_eq!(executable.interaction.params["method"], "POST");
+        assert_eq!(executable.interaction.params["body"]["title"], "Sync 42");
+        assert_eq!(
+            executable.interaction.params["headers"]["Authorization"],
+            "Bearer abc123"
+        );
+
+        let log_yaml = r#"
+id: TEST-LOG-RESOLVE-001
+name: Resolve log vars
+applies_to:
+  capabilities: [test]
+  interfaces: [logs]
+acceptance_criteria:
+  - id: AC-1
+    description: log query resolves
+interaction:
+  type: logs
+  query: loop:$loop_id
+checks:
+  - type: log_contains
+    acceptance_criteria: AC-1
+"#;
+        let log_scenario: ScenarioFile = serde_yaml::from_str(log_yaml).unwrap();
+        let (log_interaction, log_checks) = log_scenario.as_single().unwrap();
+        let log_outputs = HashMap::from([("loop_id".to_string(), "smi-abc123".to_string())]);
+
+        let log_executable = to_executable_with_context(
+            &log_scenario,
+            log_interaction,
+            log_checks,
+            &manifest,
+            &HashMap::new(),
+            &log_outputs,
+        )
+        .unwrap();
+        assert_eq!(
+            log_executable.interaction.params["query"],
+            "loop:smi-abc123"
+        );
+    }
+
+    #[test]
+    fn to_executable_fails_when_templates_have_unresolved_variables() {
+        let scenario_yaml = r#"
+id: TEST-CLI-RESOLVE-ERR
+name: Missing variable
+applies_to:
+  capabilities: [test]
+  interfaces: [cli]
+acceptance_criteria:
+  - id: AC-1
+    description: command fails when unresolved
+interaction:
+  type: cli
+  command: echo $loop_id
+checks:
+  - type: status_code
+    expected: 0
+    acceptance_criteria: AC-1
+"#;
+        let scenario: ScenarioFile = serde_yaml::from_str(scenario_yaml).unwrap();
+        let (interaction, checks) = scenario.as_single().unwrap();
+
+        let manifest: SubjectManifest = serde_json::from_str(
+            r#"{
+  "projectId": "resolve-cli-error",
+  "environment": "local",
+  "interfaces": ["cli"],
+  "capabilities": ["test"]
+}"#,
+        )
+        .unwrap();
+
+        let error = to_executable_with_context(
+            &scenario,
+            interaction,
+            checks,
+            &manifest,
+            &HashMap::new(),
+            &HashMap::new(),
+        )
+        .unwrap_err();
+
+        assert!(error.contains("Unresolved variables: loop_id"));
     }
 }
