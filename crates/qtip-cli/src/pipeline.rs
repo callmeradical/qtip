@@ -736,72 +736,144 @@ fn scalar_value_to_string(value: &serde_json::Value) -> Option<String> {
     }
 }
 
+fn register_default_adapters(executor: &mut ScenarioExecutor) {
+    executor.register_adapter(Box::new(qtip_executor::adapters::cli::CliAdapter::new()));
+    executor.register_adapter(Box::new(qtip_executor::adapters::log::LogAdapter::new()));
+    executor.register_adapter(Box::new(qtip_executor::adapters::api::ApiAdapter::new()));
+}
+
+fn register_default_workflow_adapters(executor: &mut WorkflowExecutor) {
+    executor.register_adapter(Box::new(qtip_executor::adapters::cli::CliAdapter::new()));
+    executor.register_adapter(Box::new(qtip_executor::adapters::log::LogAdapter::new()));
+    executor.register_adapter(Box::new(qtip_executor::adapters::api::ApiAdapter::new()));
+}
+
+fn collect_workflow_failures(workflow_result: &WorkflowResult) -> Vec<String> {
+    let mut failures = Vec::new();
+
+    for step in workflow_result
+        .setup
+        .iter()
+        .chain(workflow_result.steps.iter())
+    {
+        if matches!(step.status, StepStatus::Failed | StepStatus::Error) {
+            if step.failures.is_empty() {
+                failures.push(format!(
+                    "{} step `{}` finished with {}",
+                    step.phase.as_str(),
+                    step.name,
+                    step.status.as_str()
+                ));
+                continue;
+            }
+
+            failures.extend(step.failures.iter().map(|failure| {
+                format!(
+                    "{} step `{}` failed: {}",
+                    step.phase.as_str(),
+                    step.name,
+                    failure
+                )
+            }));
+        }
+    }
+
+    failures.extend(workflow_result.teardown_failures.iter().cloned());
+    failures
+}
+
 /// Run all resolved scenarios against a manifest.
 pub async fn execute_subject(
     manifest: &SubjectManifest,
     scenarios: &[&ScenarioFile],
     verbose: bool,
 ) -> SubjectResult {
-    let mut executor = ScenarioExecutor::new();
+    let mut scenario_executor = ScenarioExecutor::new();
+    register_default_adapters(&mut scenario_executor);
 
-    executor.register_adapter(Box::new(qtip_executor::adapters::cli::CliAdapter::new()));
-    executor.register_adapter(Box::new(qtip_executor::adapters::log::LogAdapter::new()));
-    executor.register_adapter(Box::new(qtip_executor::adapters::api::ApiAdapter::new()));
+    let mut workflow_executor = WorkflowExecutor::new();
+    register_default_workflow_adapters(&mut workflow_executor);
 
     let mut results = Vec::new();
     for scenario in scenarios {
-        let Some((interaction, checks)) = scenario.as_single() else {
-            let message = format!(
-                "Scenario `{}` is a workflow and cannot be executed yet",
-                scenario.id
-            );
-            if verbose {
-                eprintln!("[verbose] {message}");
-            }
-            results.push(EvaluationResult {
-                scenario_id: scenario.id.clone(),
-                status: EvaluationStatus::Error,
-                evidence: Evidence::cli(1, "", ""),
-                failures: vec![message],
-            });
-            continue;
-        };
-
-        if verbose {
-            eprintln!(
-                "[verbose] Executing scenario: {} ({}, {})",
-                scenario.id,
-                interaction.interaction_type,
-                scenario.kind_label()
-            );
-        }
-        let executable = match to_executable(scenario, interaction, checks, manifest) {
-            Ok(executable) => executable,
-            Err(message) => {
+        match &scenario.kind {
+            ScenarioKind::Single {
+                interaction,
+                checks,
+            } => {
                 if verbose {
-                    eprintln!("[verbose] {message}");
+                    eprintln!(
+                        "[verbose] Executing scenario: {} ({}, {})",
+                        scenario.id,
+                        interaction.interaction_type,
+                        scenario.kind_label()
+                    );
                 }
+                let executable = match to_executable(scenario, interaction, checks, manifest) {
+                    Ok(executable) => executable,
+                    Err(message) => {
+                        if verbose {
+                            eprintln!("[verbose] {message}");
+                        }
+                        results.push(EvaluationResult {
+                            scenario_id: scenario.id.clone(),
+                            status: EvaluationStatus::Error,
+                            evidence: Evidence::cli(1, "", ""),
+                            failures: vec![message],
+                        });
+                        continue;
+                    }
+                };
+                if verbose {
+                    eprintln!("[verbose]   params: {:?}", executable.interaction.params);
+                    eprintln!("[verbose]   checks: {}", executable.checks.len());
+                }
+                let result = scenario_executor.execute(&executable).await;
+                if verbose {
+                    eprintln!("[verbose]   result: {:?}", result.status);
+                    for failure in &result.failures {
+                        eprintln!("[verbose]   failure: {}", failure);
+                    }
+                }
+                results.push(result);
+            }
+            ScenarioKind::Workflow { .. } => {
+                if verbose {
+                    eprintln!("[verbose] Executing scenario: {} (workflow)", scenario.id);
+                }
+
+                let workflow_result =
+                    match workflow_executor.execute_workflow(scenario, manifest).await {
+                        Ok(result) => result,
+                        Err(message) => {
+                            if verbose {
+                                eprintln!("[verbose] {message}");
+                            }
+                            results.push(EvaluationResult {
+                                scenario_id: scenario.id.clone(),
+                                status: EvaluationStatus::Error,
+                                evidence: Evidence::cli(1, "", ""),
+                                failures: vec![message],
+                            });
+                            continue;
+                        }
+                    };
+                let failures = collect_workflow_failures(&workflow_result);
+                if verbose {
+                    eprintln!("[verbose]   result: {:?}", workflow_result.status);
+                    for failure in &failures {
+                        eprintln!("[verbose]   failure: {}", failure);
+                    }
+                }
+
                 results.push(EvaluationResult {
                     scenario_id: scenario.id.clone(),
-                    status: EvaluationStatus::Error,
-                    evidence: Evidence::cli(1, "", ""),
-                    failures: vec![message],
+                    status: workflow_result.status.clone(),
+                    evidence: Evidence::cli(0, "", ""),
+                    failures,
                 });
-                continue;
-            }
-        };
-        if verbose {
-            eprintln!("[verbose]   params: {:?}", executable.interaction.params);
-            eprintln!("[verbose]   checks: {}", executable.checks.len());
-        }
-        let result = executor.execute(&executable).await;
-        if verbose {
-            eprintln!("[verbose]   result: {:?}", result.status);
-            for failure in &result.failures {
-                eprintln!("[verbose]   failure: {}", failure);
             }
         }
-        results.push(result);
     }
 
     let passed = results

@@ -340,7 +340,7 @@
     {
       "id": "US-010",
       "title": "Implement github_labels_match and github_comment_contains",
-      "status": "in_progress",
+      "status": "done",
       "dependsOn": [
         "US-005"
       ],
@@ -352,13 +352,13 @@
         "Negative case: `github_comment_contains` fails when no comment body matches the configured regex pattern."
       ],
       "startedAt": "2026-04-05T06:05:31.312855+00:00",
-      "completedAt": null,
-      "updatedAt": "2026-04-05T06:05:31.313089+00:00"
+      "completedAt": "2026-04-05T06:11:54.175668+00:00",
+      "updatedAt": "2026-04-05T06:11:54.175328+00:00"
     },
     {
       "id": "US-011",
       "title": "Route CLI Execution by Scenario Kind",
-      "status": "open",
+      "status": "in_progress",
       "dependsOn": [
         "US-002",
         "US-005"
@@ -369,7 +369,10 @@
         "Example: a single-interaction scenario run still produces the same pass/fail behavior as before.",
         "Negative case: invalid workflow schema exits non-zero with parser validation details.",
         "Execution routing is covered by command-level tests."
-      ]
+      ],
+      "startedAt": "2026-04-05T06:11:56.282497+00:00",
+      "completedAt": null,
+      "updatedAt": "2026-04-05T06:11:56.282722+00:00"
     },
     {
       "id": "US-012",
