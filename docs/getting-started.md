@@ -148,5 +148,6 @@ Best for teams using GitHub Actions who want "Quality Gating" built into their P
 ## 8. Next Steps
 
 - **Agent Sandboxing**: Learn why the [Two-Repo Strategy](./agent-sandboxing.md) is critical for AI-driven development.
+- **Workflow Authoring**: Learn workflow schema, variable substitution, timeout/warn behavior, and examples in the [Workflow Scenarios Guide](./workflow-scenarios.md).
 - **GitHub Action**: Use qtip in CI/CD with our [GitHub Action](./README.md#github-action).
 - **Testability Matrix**: Explore supported [adapters and checks](./testability.md).

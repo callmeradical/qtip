@@ -119,6 +119,10 @@ qtip supports three interaction types, selected per-scenario:
 | `stderr` | CLI | Assert stderr contains expected string |
 | `log_contains` | Logs | Assert a log event was found |
 | `log_not_contains` | Logs | Assert a log event was NOT found |
+| `loop_state` | CLI/API JSON evidence | Assert workflow loop state at `$.state` or `$.record.state` |
+| `github_pr_exists` | CLI JSON evidence | Assert at least one PR from `gh pr list --json` matches configured filters |
+| `github_labels_match` | CLI JSON evidence | Assert issue labels contain (or exactly equal) expected labels |
+| `github_comment_contains` | CLI JSON evidence | Assert at least one comment body matches a regex pattern |
 
 ## Architecture
 
@@ -228,6 +232,10 @@ Full documentation including the Architecture Deep-Dive and NFRs is built using 
 npm run docs:build
 npm run docs:serve
 ```
+
+Workflow authoring reference:
+
+- [Workflow Scenarios Guide](docs/workflow-scenarios.md)
 
 ## License
 
