@@ -182,6 +182,91 @@ fn workflow_step_to_json(step: &pipeline::StepResult) -> JsonWorkflowStep {
     }
 }
 
+fn failed_check_summaries(step: &pipeline::StepResult) -> Vec<String> {
+    step.checks
+        .iter()
+        .filter(|check| check.status == pipeline::CheckStatus::Failed)
+        .map(|check| {
+            let criteria_suffix = if check.acceptance_criteria.is_empty() {
+                String::new()
+            } else {
+                format!(" ({})", check.acceptance_criteria)
+            };
+
+            if check.details.is_empty() {
+                format!("{}{}", check.check_type, criteria_suffix)
+            } else {
+                format!(
+                    "{}{}: {}",
+                    check.check_type,
+                    criteria_suffix,
+                    check.details.join(" | ")
+                )
+            }
+        })
+        .collect()
+}
+
+fn print_workflow_section(
+    title: &str,
+    item_label: &str,
+    steps: &[pipeline::StepResult],
+    show_failed_check_summary: bool,
+    render_failures_as_warning: bool,
+) {
+    println!("      {title}:");
+
+    if steps.is_empty() {
+        println!("        (none)");
+        return;
+    }
+
+    let total = steps.len();
+    for (index, step) in steps.iter().enumerate() {
+        println!(
+            "        {} {}/{}: {} [{}] ({} ms)",
+            item_label,
+            index + 1,
+            total,
+            step.name,
+            step_status_label(step.status),
+            step.duration_ms
+        );
+
+        if show_failed_check_summary {
+            let check_summaries = failed_check_summaries(step);
+            if !check_summaries.is_empty() {
+                println!("          Failed checks: {}", check_summaries.join("; "));
+            }
+        }
+
+        for warning in &step.warnings {
+            println!("          WARNING: {warning}");
+        }
+
+        for failure in &step.failures {
+            if render_failures_as_warning {
+                println!("          WARNING: {failure}");
+            } else {
+                println!("          {failure}");
+            }
+        }
+    }
+}
+
+fn print_workflow_text_report(workflow: &pipeline::WorkflowResult) {
+    print_workflow_section("Setup", "Setup", &workflow.setup, true, false);
+    print_workflow_section("Steps", "Step", &workflow.steps, true, false);
+    print_workflow_section("Teardown", "Teardown", &workflow.teardown, false, true);
+
+    if !workflow.teardown_failures.is_empty() {
+        println!("      Teardown warnings:");
+        for warning in &workflow.teardown_failures {
+            println!("        - WARNING: {warning}");
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() -> ExitCode {
     let cli = Cli::parse();
@@ -410,8 +495,18 @@ async fn run_evaluate(cli: &Cli) -> ExitCode {
                 result.scenario_id, result.scenario_name
             );
 
-            for failure in &result.failures {
-                println!("      - {failure}");
+            if matches!(result.kind, pipeline::ScenarioExecutionKind::Workflow) {
+                if let Some(workflow) = &result.workflow {
+                    print_workflow_text_report(workflow);
+                } else {
+                    for failure in &result.failures {
+                        println!("      - {failure}");
+                    }
+                }
+            } else {
+                for failure in &result.failures {
+                    println!("      - {failure}");
+                }
             }
         }
 

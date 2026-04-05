@@ -377,7 +377,7 @@
     {
       "id": "US-012",
       "title": "Extend JSON Report for Workflow Detail",
-      "status": "in_progress",
+      "status": "done",
       "dependsOn": [
         "US-011",
         "US-008",
@@ -392,13 +392,13 @@
         "JSON structure is documented and validated by reporter tests."
       ],
       "startedAt": "2026-04-05T06:16:40.946014+00:00",
-      "completedAt": null,
-      "updatedAt": "2026-04-05T06:16:40.946218+00:00"
+      "completedAt": "2026-04-05T06:22:48.571908+00:00",
+      "updatedAt": "2026-04-05T06:22:48.571745+00:00"
     },
     {
       "id": "US-013",
       "title": "Extend Text Reporter for Step Diagnostics",
-      "status": "open",
+      "status": "in_progress",
       "dependsOn": [
         "US-011"
       ],
@@ -408,7 +408,10 @@
         "Example: failing step output explicitly states `Step 2/4: Wait for completion` and includes failed check summary.",
         "Negative case: skipped steps appear as `skipped` and are not mislabeled as passed.",
         "Teardown failures are shown as warnings and clearly separated from main step failures."
-      ]
+      ],
+      "startedAt": "2026-04-05T06:22:50.676996+00:00",
+      "completedAt": null,
+      "updatedAt": "2026-04-05T06:22:50.677246+00:00"
     },
     {
       "id": "US-014",

@@ -418,3 +418,95 @@ checks:
     assert!(result.get("steps").is_none());
     assert!(result.get("teardown").is_none());
 }
+
+#[test]
+fn evaluate_text_report_prints_ordered_workflow_step_diagnostics() {
+    let workspace = TestWorkspace::new();
+    workspace.write_manifest(manifest_fixture());
+
+    workspace.write_scenario(
+        "workflow-text.yaml",
+        r#"
+id: TEST-WORKFLOW-TEXT-001
+name: Workflow text diagnostics
+applies_to:
+  capabilities: [test]
+  interfaces: [cli]
+acceptance_criteria:
+  - id: AC-1
+    description: detailed text reporting
+setup:
+  - name: Prepare workspace
+    interaction:
+      type: cli
+      command: echo setup-ready
+    checks:
+      - type: status_code
+        expected: 0
+        acceptance_criteria: AC-1
+steps:
+  - name: Bootstrap run
+    interaction:
+      type: cli
+      command: echo bootstrap
+    checks:
+      - type: status_code
+        expected: 0
+        acceptance_criteria: AC-1
+  - name: Wait for completion
+    interaction:
+      type: cli
+      command: exit 1
+    checks:
+      - type: status_code
+        expected: 0
+        acceptance_criteria: AC-1
+  - name: Publish results
+    interaction:
+      type: cli
+      command: echo publish
+    checks:
+      - type: status_code
+        expected: 0
+        acceptance_criteria: AC-1
+  - name: Notify channel
+    interaction:
+      type: cli
+      command: echo notify
+    checks:
+      - type: status_code
+        expected: 0
+        acceptance_criteria: AC-1
+teardown:
+  - name: Cleanup resources
+    interaction:
+      type: cli
+      command: exit 1
+    checks:
+      - type: status_code
+        expected: 0
+        acceptance_criteria: AC-1
+"#,
+    );
+
+    let output = run_qtip(&workspace);
+    let stdout = stdout_text(&output);
+    let stderr = stderr_text(&output);
+
+    assert!(
+        !output.status.success(),
+        "expected non-zero exit\nstdout:\n{}\nstderr:\n{}",
+        stdout,
+        stderr
+    );
+    assert!(stdout.contains("Setup:"));
+    assert!(stdout.contains("Steps:"));
+    assert!(stdout.contains("Teardown:"));
+    assert!(stdout.contains("Step 2/4: Wait for completion [failed]"));
+    assert!(stdout.contains("Failed checks: status_code (AC-1)"));
+    assert!(stdout.contains("Step 3/4: Publish results [skipped]"));
+    assert!(!stdout.contains("Step 3/4: Publish results [passed]"));
+    assert!(stdout.contains("Step 4/4: Notify channel [skipped]"));
+    assert!(stdout.contains("Teardown warnings:"));
+    assert!(stdout.contains("WARNING: Teardown step `Cleanup resources` failed"));
+}
