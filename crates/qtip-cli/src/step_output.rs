@@ -255,4 +255,21 @@ mod tests {
             Some("warn-42")
         );
     }
+
+    #[test]
+    fn json_output_with_malformed_stdout_reports_parse_error_for_key() {
+        let outputs = HashMap::from([("loop_id".to_string(), json_output("$.loop_id"))]);
+        let evidence = Evidence::cli(0, "{not-json", "");
+
+        let failures =
+            extract_step_outputs(&outputs, &evidence).expect_err("extraction should fail");
+
+        assert_eq!(failures.len(), 1);
+        assert_eq!(failures[0].key, "loop_id");
+        assert!(
+            failures[0]
+                .message
+                .contains("failed to parse stdout as json")
+        );
+    }
 }

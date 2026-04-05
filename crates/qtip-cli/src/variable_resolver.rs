@@ -227,4 +227,24 @@ mod tests {
             "Bearer abc123"
         );
     }
+
+    #[test]
+    fn resolve_json_value_reports_unresolved_variables_with_explicit_message() {
+        let env = HashMap::new();
+        let outputs = HashMap::new();
+        let context = ResolveContext::new(&env, &outputs);
+
+        let input = serde_json::json!({
+            "request": {
+                "path": "/loops/$loop_id",
+                "headers": {
+                    "Authorization": "Bearer $token"
+                },
+                "query": "$loop_id"
+            }
+        });
+
+        let error = resolve_json_value(&input, &context).expect_err("resolution should fail");
+        assert_eq!(error.to_string(), "Unresolved variables: loop_id, token");
+    }
 }

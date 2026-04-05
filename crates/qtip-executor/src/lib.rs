@@ -432,6 +432,26 @@ mod tests {
         assert!(failures[0].contains("AC-10"));
     }
 
+    #[test]
+    fn github_labels_match_fails_gracefully_for_malformed_json_output() {
+        let checks = vec![Check {
+            check_type: CheckType::GithubLabelsMatch,
+            expected: Some(json!({
+                "labels": ["bug"],
+                "exact": false
+            })),
+            path: None,
+            exists: None,
+            acceptance_criteria: "AC-10".to_string(),
+        }];
+        let evidence = Evidence::cli(0, "not-json", "");
+
+        let failures = evaluate_checks(&checks, &evidence);
+        assert_eq!(failures.len(), 1);
+        assert!(failures[0].contains("failed to parse stdout as JSON"));
+        assert!(failures[0].contains("AC-10"));
+    }
+
     // -- github_comment_contains checks --
 
     #[test]
@@ -475,6 +495,25 @@ mod tests {
         let failures = evaluate_checks(&checks, &evidence);
         assert_eq!(failures.len(), 1);
         assert!(failures[0].contains("no comment body matched pattern"));
+        assert!(failures[0].contains("AC-11"));
+    }
+
+    #[test]
+    fn github_comment_contains_fails_gracefully_for_malformed_json_output() {
+        let checks = vec![Check {
+            check_type: CheckType::GithubCommentContains,
+            expected: Some(json!({
+                "pattern": "(?i)triaged"
+            })),
+            path: None,
+            exists: None,
+            acceptance_criteria: "AC-11".to_string(),
+        }];
+        let evidence = Evidence::cli(0, "not-json", "");
+
+        let failures = evaluate_checks(&checks, &evidence);
+        assert_eq!(failures.len(), 1);
+        assert!(failures[0].contains("failed to parse stdout as JSON"));
         assert!(failures[0].contains("AC-11"));
     }
 

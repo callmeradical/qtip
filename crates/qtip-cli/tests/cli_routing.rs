@@ -372,6 +372,97 @@ teardown:
 }
 
 #[test]
+fn evaluate_json_report_workflow_setup_pass_step_fail_fast_and_teardown_run() {
+    let workspace = TestWorkspace::new();
+    workspace.write_manifest(manifest_fixture());
+
+    workspace.write_scenario(
+        "workflow-fail-fast.json.yaml",
+        r#"
+id: TEST-WORKFLOW-FAIL-FAST-001
+name: Workflow fail-fast lifecycle
+applies_to:
+  capabilities: [test]
+  interfaces: [cli]
+acceptance_criteria:
+  - id: AC-1
+    description: setup pass, step fail-fast, teardown run
+setup:
+  - name: Setup environment
+    interaction:
+      type: cli
+      command: echo setup-ready
+    checks:
+      - type: status_code
+        expected: 0
+        acceptance_criteria: AC-1
+steps:
+  - name: Bootstrap
+    interaction:
+      type: cli
+      command: echo bootstrap
+    checks:
+      - type: status_code
+        expected: 0
+        acceptance_criteria: AC-1
+  - name: Validate
+    interaction:
+      type: cli
+      command: exit 1
+    checks:
+      - type: status_code
+        expected: 0
+        acceptance_criteria: AC-1
+  - name: Publish
+    interaction:
+      type: cli
+      command: echo should-not-run
+    checks:
+      - type: status_code
+        expected: 0
+        acceptance_criteria: AC-1
+teardown:
+  - name: Cleanup
+    interaction:
+      type: cli
+      command: echo cleanup
+    checks:
+      - type: status_code
+        expected: 0
+        acceptance_criteria: AC-1
+"#,
+    );
+
+    let output = run_qtip_json(&workspace);
+    let stdout = stdout_text(&output);
+    let stderr = stderr_text(&output);
+
+    assert!(
+        !output.status.success(),
+        "expected non-zero exit, stdout:\n{}\nstderr:\n{}",
+        stdout,
+        stderr
+    );
+
+    let report = parse_json_stdout(&output);
+    assert_eq!(report["status"], "failed");
+
+    let result = &report["results"][0];
+    assert_eq!(result["id"], "TEST-WORKFLOW-FAIL-FAST-001");
+    assert_eq!(result["status"], "failed");
+    assert_eq!(result["setup"][0]["name"], "Setup environment");
+    assert_eq!(result["setup"][0]["status"], "passed");
+    assert_eq!(result["steps"][0]["name"], "Bootstrap");
+    assert_eq!(result["steps"][0]["status"], "passed");
+    assert_eq!(result["steps"][1]["name"], "Validate");
+    assert_eq!(result["steps"][1]["status"], "failed");
+    assert_eq!(result["steps"][2]["name"], "Publish");
+    assert_eq!(result["steps"][2]["status"], "skipped");
+    assert_eq!(result["teardown"][0]["name"], "Cleanup");
+    assert_eq!(result["teardown"][0]["status"], "passed");
+}
+
+#[test]
 fn evaluate_json_report_tags_single_without_workflow_arrays() {
     let workspace = TestWorkspace::new();
     workspace.write_manifest(manifest_fixture());
