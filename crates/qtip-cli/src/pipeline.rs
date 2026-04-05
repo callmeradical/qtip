@@ -3,16 +3,18 @@ use std::path::Path;
 
 use qtip_executor::check::{Check, CheckType, Evidence};
 use qtip_executor::executor::{
-    EvaluationResult, EvaluationStatus, ExecutableScenario, Interaction as ExecInteraction,
-    ScenarioExecutor,
+    Adapter, EvaluationResult, EvaluationStatus, ExecutableScenario,
+    Interaction as ExecInteraction, ScenarioExecutor,
 };
 use qtip_resolver::{
     AppliesTo, ScenarioManifest, ScenarioResolver, SubjectInterface, SubjectQuery,
 };
 
 use crate::scenario::{
-    Check as ScenarioCheck, Interaction as ScenarioInteraction, ScenarioFile, SubjectManifest,
+    Check as ScenarioCheck, Interaction as ScenarioInteraction, ScenarioFile, ScenarioKind,
+    ScenarioStep, SubjectManifest,
 };
+use crate::step_output::{extract_step_outputs, merge_step_outputs};
 use crate::variable_resolver::{ResolveContext, resolve_json_value};
 
 #[derive(Debug)]
@@ -21,6 +23,306 @@ pub struct SubjectResult {
     pub results: Vec<EvaluationResult>,
     pub passed: usize,
     pub failed: usize,
+}
+
+#[cfg_attr(not(test), allow(dead_code))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StepPhase {
+    Setup,
+    Main,
+    Teardown,
+}
+
+#[cfg_attr(not(test), allow(dead_code))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StepStatus {
+    Passed,
+    Failed,
+    Error,
+    Skipped,
+}
+
+#[cfg_attr(not(test), allow(dead_code))]
+#[derive(Debug, Clone)]
+pub struct StepResult {
+    pub name: String,
+    pub phase: StepPhase,
+    pub status: StepStatus,
+    pub evidence: Option<Evidence>,
+    pub failures: Vec<String>,
+    pub outputs_captured: HashMap<String, String>,
+}
+
+#[cfg_attr(not(test), allow(dead_code))]
+#[derive(Debug, Clone)]
+pub struct WorkflowResult {
+    #[allow(dead_code)]
+    pub scenario_id: String,
+    pub status: EvaluationStatus,
+    pub setup: Vec<StepResult>,
+    pub steps: Vec<StepResult>,
+    pub teardown: Vec<StepResult>,
+    pub teardown_failures: Vec<String>,
+}
+
+#[cfg_attr(not(test), allow(dead_code))]
+pub struct WorkflowExecutor {
+    executor: ScenarioExecutor,
+}
+
+impl Default for WorkflowExecutor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg_attr(not(test), allow(dead_code))]
+impl WorkflowExecutor {
+    pub fn new() -> Self {
+        Self {
+            executor: ScenarioExecutor::new(),
+        }
+    }
+
+    pub fn register_adapter(&mut self, adapter: Box<dyn Adapter>) {
+        self.executor.register_adapter(adapter);
+    }
+
+    pub async fn execute_workflow(
+        &self,
+        scenario: &ScenarioFile,
+        manifest: &SubjectManifest,
+    ) -> Result<WorkflowResult, String> {
+        let (setup_steps, main_steps, teardown_steps) = match &scenario.kind {
+            ScenarioKind::Workflow {
+                setup,
+                steps,
+                teardown,
+            } => (setup.as_slice(), steps.as_slice(), teardown.as_slice()),
+            ScenarioKind::Single { .. } => {
+                return Err(format!("Scenario `{}` is not a workflow", scenario.id));
+            }
+        };
+
+        let environment_values = build_environment_values(manifest);
+        let mut output_context = HashMap::new();
+
+        let mut setup_results = Vec::with_capacity(setup_steps.len());
+        let mut setup_blocked = false;
+        for step in setup_steps {
+            if setup_blocked {
+                setup_results.push(skipped_step_result(
+                    step,
+                    StepPhase::Setup,
+                    "Skipped because a previous setup step failed".to_string(),
+                ));
+                continue;
+            }
+
+            let result = self
+                .execute_step(
+                    scenario,
+                    step,
+                    StepPhase::Setup,
+                    manifest,
+                    &environment_values,
+                    &mut output_context,
+                )
+                .await;
+            setup_blocked = is_blocking_status(result.status);
+            setup_results.push(result);
+        }
+
+        let mut step_results = Vec::with_capacity(main_steps.len());
+        let mut main_blocked = setup_blocked;
+        for step in main_steps {
+            if main_blocked {
+                let reason = if setup_blocked {
+                    "Skipped because setup did not complete successfully".to_string()
+                } else {
+                    "Skipped because a previous main step failed".to_string()
+                };
+                step_results.push(skipped_step_result(step, StepPhase::Main, reason));
+                continue;
+            }
+
+            let result = self
+                .execute_step(
+                    scenario,
+                    step,
+                    StepPhase::Main,
+                    manifest,
+                    &environment_values,
+                    &mut output_context,
+                )
+                .await;
+            if is_blocking_status(result.status) {
+                main_blocked = true;
+            }
+            step_results.push(result);
+        }
+
+        let mut teardown_results = Vec::with_capacity(teardown_steps.len());
+        for step in teardown_steps {
+            teardown_results.push(
+                self.execute_step(
+                    scenario,
+                    step,
+                    StepPhase::Teardown,
+                    manifest,
+                    &environment_values,
+                    &mut output_context,
+                )
+                .await,
+            );
+        }
+
+        let status = derive_main_status(&setup_results, &step_results);
+        let teardown_failures = collect_teardown_failures(&teardown_results);
+
+        Ok(WorkflowResult {
+            scenario_id: scenario.id.clone(),
+            status,
+            setup: setup_results,
+            steps: step_results,
+            teardown: teardown_results,
+            teardown_failures,
+        })
+    }
+
+    async fn execute_step(
+        &self,
+        scenario: &ScenarioFile,
+        step: &ScenarioStep,
+        phase: StepPhase,
+        manifest: &SubjectManifest,
+        environment_values: &HashMap<String, String>,
+        output_context: &mut HashMap<String, String>,
+    ) -> StepResult {
+        let executable = match to_executable_with_context(
+            scenario,
+            &step.interaction,
+            &step.checks,
+            manifest,
+            environment_values,
+            output_context,
+        ) {
+            Ok(executable) => executable,
+            Err(message) => {
+                return StepResult {
+                    name: step.name.clone(),
+                    phase,
+                    status: StepStatus::Error,
+                    evidence: None,
+                    failures: vec![format!(
+                        "Step `{}` preparation failed: {message}",
+                        step.name
+                    )],
+                    outputs_captured: HashMap::new(),
+                };
+            }
+        };
+
+        let evaluation = self.executor.execute(&executable).await;
+        let mut result = StepResult {
+            name: step.name.clone(),
+            phase,
+            status: step_status_from_evaluation(evaluation.status),
+            evidence: Some(evaluation.evidence),
+            failures: evaluation.failures,
+            outputs_captured: HashMap::new(),
+        };
+
+        if matches!(result.status, StepStatus::Passed) && !step.outputs.is_empty() {
+            match extract_step_outputs(&step.outputs, result.evidence.as_ref().expect("present")) {
+                Ok(extracted) => {
+                    result.outputs_captured = extracted.clone();
+                    merge_step_outputs(output_context, extracted);
+                }
+                Err(failures) => {
+                    result.status = StepStatus::Failed;
+                    result.failures.extend(failures.into_iter().map(|failure| {
+                        format!(
+                            "Output `{}` extraction failed: {}",
+                            failure.key, failure.message
+                        )
+                    }));
+                }
+            }
+        }
+
+        result
+    }
+}
+
+#[cfg_attr(not(test), allow(dead_code))]
+fn step_status_from_evaluation(status: EvaluationStatus) -> StepStatus {
+    match status {
+        EvaluationStatus::Passed => StepStatus::Passed,
+        EvaluationStatus::Failed => StepStatus::Failed,
+        EvaluationStatus::Error => StepStatus::Error,
+    }
+}
+
+#[cfg_attr(not(test), allow(dead_code))]
+fn is_blocking_status(status: StepStatus) -> bool {
+    matches!(status, StepStatus::Failed | StepStatus::Error)
+}
+
+#[cfg_attr(not(test), allow(dead_code))]
+fn skipped_step_result(step: &ScenarioStep, phase: StepPhase, reason: String) -> StepResult {
+    StepResult {
+        name: step.name.clone(),
+        phase,
+        status: StepStatus::Skipped,
+        evidence: None,
+        failures: vec![reason],
+        outputs_captured: HashMap::new(),
+    }
+}
+
+#[cfg_attr(not(test), allow(dead_code))]
+fn derive_main_status(
+    setup_results: &[StepResult],
+    step_results: &[StepResult],
+) -> EvaluationStatus {
+    if setup_results
+        .iter()
+        .chain(step_results.iter())
+        .any(|result| result.status == StepStatus::Error)
+    {
+        EvaluationStatus::Error
+    } else if setup_results
+        .iter()
+        .chain(step_results.iter())
+        .any(|result| result.status == StepStatus::Failed)
+    {
+        EvaluationStatus::Failed
+    } else {
+        EvaluationStatus::Passed
+    }
+}
+
+#[cfg_attr(not(test), allow(dead_code))]
+fn collect_teardown_failures(teardown_results: &[StepResult]) -> Vec<String> {
+    teardown_results
+        .iter()
+        .filter(|result| is_blocking_status(result.status))
+        .map(|result| {
+            if result.failures.is_empty() {
+                format!(
+                    "Teardown step `{}` finished with {:?}",
+                    result.name, result.status
+                )
+            } else {
+                format!(
+                    "Teardown step `{}` failed: {}",
+                    result.name,
+                    result.failures.join("; ")
+                )
+            }
+        })
+        .collect()
 }
 
 /// Load all YAML scenario files from a directory.
@@ -333,9 +635,10 @@ pub async fn execute_subject(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use qtip_executor::executor::EvaluationStatus;
+    use qtip_executor::executor::{Adapter, EvaluationStatus};
     use std::collections::HashMap;
     use std::path::Path;
+    use std::sync::{Arc, Mutex};
 
     fn read_fixture(path: &str) -> String {
         let fixture_path = Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -575,5 +878,261 @@ checks:
         .unwrap_err();
 
         assert!(error.contains("Unresolved variables: loop_id"));
+    }
+
+    #[derive(Clone)]
+    struct RecordingCliAdapter {
+        responses: HashMap<String, Result<Evidence, String>>,
+        executed_commands: Arc<Mutex<Vec<String>>>,
+    }
+
+    impl Adapter for RecordingCliAdapter {
+        fn interaction_type(&self) -> &str {
+            "cli"
+        }
+
+        fn execute<'a>(
+            &'a self,
+            interaction: &'a ExecInteraction,
+        ) -> qtip_executor::executor::BoxFuture<'a, Result<Evidence, String>> {
+            let command = interaction
+                .params
+                .get("command")
+                .and_then(|value| value.as_str())
+                .unwrap_or("")
+                .to_string();
+            self.executed_commands
+                .lock()
+                .expect("lock commands")
+                .push(command.clone());
+            let response = self.responses.get(&command).cloned().unwrap_or_else(|| {
+                Err(format!(
+                    "No stub response configured for command `{command}`"
+                ))
+            });
+            Box::pin(async move { response })
+        }
+    }
+
+    fn test_manifest() -> SubjectManifest {
+        serde_json::from_str(
+            r#"{
+  "projectId": "workflow-test-subject",
+  "environment": "local",
+  "interfaces": ["cli"],
+  "capabilities": ["test"]
+}"#,
+        )
+        .expect("manifest should parse")
+    }
+
+    fn workflow_executor_with_cli(
+        responses: HashMap<String, Result<Evidence, String>>,
+    ) -> (WorkflowExecutor, Arc<Mutex<Vec<String>>>) {
+        let executed_commands = Arc::new(Mutex::new(Vec::new()));
+        let adapter = RecordingCliAdapter {
+            responses,
+            executed_commands: Arc::clone(&executed_commands),
+        };
+
+        let mut executor = WorkflowExecutor::new();
+        executor.register_adapter(Box::new(adapter));
+        (executor, executed_commands)
+    }
+
+    #[tokio::test]
+    async fn workflow_executor_marks_remaining_main_steps_skipped_and_runs_teardown() {
+        let scenario_yaml = r#"
+id: TEST-WORKFLOW-LIFECYCLE-001
+name: Workflow main fail-fast
+applies_to:
+  capabilities: [test]
+  interfaces: [cli]
+acceptance_criteria:
+  - id: AC-1
+    description: Workflow runs in deterministic order
+steps:
+  - name: Step 1
+    interaction:
+      type: cli
+      command: step-1
+    checks:
+      - type: status_code
+        expected: 0
+        acceptance_criteria: AC-1
+  - name: Step 2
+    interaction:
+      type: cli
+      command: step-2
+    checks:
+      - type: status_code
+        expected: 0
+        acceptance_criteria: AC-1
+  - name: Step 3
+    interaction:
+      type: cli
+      command: step-3
+    checks:
+      - type: status_code
+        expected: 0
+        acceptance_criteria: AC-1
+teardown:
+  - name: Cleanup
+    interaction:
+      type: cli
+      command: cleanup
+    checks:
+      - type: status_code
+        expected: 0
+        acceptance_criteria: AC-1
+"#;
+        let scenario: ScenarioFile = serde_yaml::from_str(scenario_yaml).expect("parse workflow");
+        let (executor, executed_commands) = workflow_executor_with_cli(HashMap::from([
+            ("step-1".to_string(), Ok(Evidence::cli(0, "", ""))),
+            ("step-2".to_string(), Ok(Evidence::cli(1, "", ""))),
+            ("cleanup".to_string(), Ok(Evidence::cli(0, "", ""))),
+        ]));
+
+        let result = executor
+            .execute_workflow(&scenario, &test_manifest())
+            .await
+            .expect("workflow execution succeeds");
+
+        assert_eq!(result.status, EvaluationStatus::Failed);
+        assert_eq!(result.steps.len(), 3);
+        assert_eq!(result.steps[0].status, StepStatus::Passed);
+        assert_eq!(result.steps[1].status, StepStatus::Failed);
+        assert_eq!(result.steps[2].status, StepStatus::Skipped);
+        assert_eq!(result.steps[2].phase, StepPhase::Main);
+        assert_eq!(result.teardown.len(), 1);
+        assert_eq!(result.teardown[0].status, StepStatus::Passed);
+        assert!(result.teardown_failures.is_empty());
+        assert_eq!(
+            executed_commands.lock().expect("lock commands").clone(),
+            vec!["step-1", "step-2", "cleanup"]
+        );
+    }
+
+    #[tokio::test]
+    async fn workflow_executor_aborts_main_steps_when_setup_fails_and_runs_teardown() {
+        let scenario_yaml = r#"
+id: TEST-WORKFLOW-LIFECYCLE-002
+name: Workflow setup failure
+applies_to:
+  capabilities: [test]
+  interfaces: [cli]
+acceptance_criteria:
+  - id: AC-1
+    description: setup controls main execution
+setup:
+  - name: Setup 1
+    interaction:
+      type: cli
+      command: setup-1
+    checks:
+      - type: status_code
+        expected: 0
+        acceptance_criteria: AC-1
+  - name: Setup 2
+    interaction:
+      type: cli
+      command: setup-2
+    checks:
+      - type: status_code
+        expected: 0
+        acceptance_criteria: AC-1
+steps:
+  - name: Step 1
+    interaction:
+      type: cli
+      command: step-1
+    checks:
+      - type: status_code
+        expected: 0
+        acceptance_criteria: AC-1
+teardown:
+  - name: Cleanup
+    interaction:
+      type: cli
+      command: cleanup
+    checks:
+      - type: status_code
+        expected: 0
+        acceptance_criteria: AC-1
+"#;
+        let scenario: ScenarioFile = serde_yaml::from_str(scenario_yaml).expect("parse workflow");
+        let (executor, executed_commands) = workflow_executor_with_cli(HashMap::from([
+            ("setup-1".to_string(), Ok(Evidence::cli(1, "", ""))),
+            ("cleanup".to_string(), Ok(Evidence::cli(0, "", ""))),
+        ]));
+
+        let result = executor
+            .execute_workflow(&scenario, &test_manifest())
+            .await
+            .expect("workflow execution succeeds");
+
+        assert_eq!(result.status, EvaluationStatus::Failed);
+        assert_eq!(result.setup.len(), 2);
+        assert_eq!(result.setup[0].status, StepStatus::Failed);
+        assert_eq!(result.setup[1].status, StepStatus::Skipped);
+        assert_eq!(result.steps.len(), 1);
+        assert_eq!(result.steps[0].status, StepStatus::Skipped);
+        assert_eq!(result.teardown[0].status, StepStatus::Passed);
+        assert_eq!(
+            executed_commands.lock().expect("lock commands").clone(),
+            vec!["setup-1", "cleanup"]
+        );
+    }
+
+    #[tokio::test]
+    async fn workflow_executor_reports_teardown_failures_without_overriding_main_status() {
+        let scenario_yaml = r#"
+id: TEST-WORKFLOW-LIFECYCLE-003
+name: Workflow teardown failure
+applies_to:
+  capabilities: [test]
+  interfaces: [cli]
+acceptance_criteria:
+  - id: AC-1
+    description: teardown failures are distinct
+steps:
+  - name: Main step
+    interaction:
+      type: cli
+      command: main-step
+    checks:
+      - type: status_code
+        expected: 0
+        acceptance_criteria: AC-1
+teardown:
+  - name: Cleanup
+    interaction:
+      type: cli
+      command: cleanup
+    checks:
+      - type: status_code
+        expected: 0
+        acceptance_criteria: AC-1
+"#;
+        let scenario: ScenarioFile = serde_yaml::from_str(scenario_yaml).expect("parse workflow");
+        let (executor, executed_commands) = workflow_executor_with_cli(HashMap::from([
+            ("main-step".to_string(), Ok(Evidence::cli(0, "", ""))),
+            ("cleanup".to_string(), Ok(Evidence::cli(1, "", ""))),
+        ]));
+
+        let result = executor
+            .execute_workflow(&scenario, &test_manifest())
+            .await
+            .expect("workflow execution succeeds");
+
+        assert_eq!(result.status, EvaluationStatus::Passed);
+        assert_eq!(result.steps[0].status, StepStatus::Passed);
+        assert_eq!(result.teardown[0].status, StepStatus::Failed);
+        assert_eq!(result.teardown_failures.len(), 1);
+        assert!(result.teardown_failures[0].contains("Teardown step `Cleanup`"));
+        assert_eq!(
+            executed_commands.lock().expect("lock commands").clone(),
+            vec!["main-step", "cleanup"]
+        );
     }
 }

@@ -55,3 +55,5 @@
 {"ts":"2026-04-05T01:37:02.789726-04:00","cmd":"status","session":"ses_86b6ef","ok":true,"dur_ms":65}
 {"ts":"2026-04-05T01:41:41.440293-04:00","cmd":"log","session":"ses_86b6ef","ok":false,"dur_ms":61,"err":"no issue specified"}
 {"ts":"2026-04-05T01:41:43.395487-04:00","cmd":"log","session":"ses_86b6ef","ok":false,"dur_ms":64,"err":"issue not found: td-US-004"}
+{"ts":"2026-04-05T01:42:28.838404-04:00","cmd":"usage","flags":{"new-session":"true"},"session":"ses_aacc24","ok":true,"dur_ms":74}
+{"ts":"2026-04-05T01:42:46.141556-04:00","cmd":"usage","flags":{"quiet":"true"},"session":"ses_aacc24","ok":true,"dur_ms":62}

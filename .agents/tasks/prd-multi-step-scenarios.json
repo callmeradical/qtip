@@ -231,7 +231,7 @@
     {
       "id": "US-004",
       "title": "Implement Step Output Extraction",
-      "status": "in_progress",
+      "status": "done",
       "dependsOn": [
         "US-001"
       ],
@@ -243,13 +243,13 @@
         "Multiple outputs can be extracted from one step and merged into workflow context."
       ],
       "startedAt": "2026-04-05T05:36:02.854215+00:00",
-      "completedAt": null,
-      "updatedAt": "2026-04-05T05:36:02.854488+00:00"
+      "completedAt": "2026-04-05T05:42:07.244954+00:00",
+      "updatedAt": "2026-04-05T05:42:07.244771+00:00"
     },
     {
       "id": "US-005",
       "title": "Build Workflow Executor Lifecycle",
-      "status": "open",
+      "status": "in_progress",
       "dependsOn": [
         "US-003",
         "US-004"
@@ -260,7 +260,10 @@
         "Example: when step 2 fails checks, step 3 is marked `skipped` and teardown still executes.",
         "Negative case: setup failure aborts main step execution and still triggers teardown phase.",
         "Teardown failures are reported distinctly without changing overall main-phase pass/fail determination."
-      ]
+      ],
+      "startedAt": "2026-04-05T05:42:09.354827+00:00",
+      "completedAt": null,
+      "updatedAt": "2026-04-05T05:42:09.355036+00:00"
     },
     {
       "id": "US-006",
