@@ -268,7 +268,7 @@
     {
       "id": "US-006",
       "title": "Support Per-Step Timeout Override",
-      "status": "in_progress",
+      "status": "done",
       "dependsOn": [
         "US-005"
       ],
@@ -280,13 +280,13 @@
         "Timeout failures include step name and configured timeout in failure output."
       ],
       "startedAt": "2026-04-05T05:47:42.164329+00:00",
-      "completedAt": null,
-      "updatedAt": "2026-04-05T05:47:42.164538+00:00"
+      "completedAt": "2026-04-05T05:52:36.009965+00:00",
+      "updatedAt": "2026-04-05T05:52:36.009803+00:00"
     },
     {
       "id": "US-007",
       "title": "Add Warn-Only Check Behavior",
-      "status": "open",
+      "status": "in_progress",
       "dependsOn": [
         "US-005"
       ],
@@ -296,7 +296,10 @@
         "Example: cost-tracking check fails with `warn_only: true` and scenario still completes as passed.",
         "Negative case: identical check with `warn_only: false` fails the step and triggers fail-fast for remaining main steps.",
         "Warnings are visible in both text and JSON outputs."
-      ]
+      ],
+      "startedAt": "2026-04-05T05:52:38.114514+00:00",
+      "completedAt": null,
+      "updatedAt": "2026-04-05T05:52:38.114746+00:00"
     },
     {
       "id": "US-008",

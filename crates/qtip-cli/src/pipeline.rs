@@ -37,6 +37,7 @@ pub enum StepPhase {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StepStatus {
     Passed,
+    Warn,
     Failed,
     Error,
     Skipped,
@@ -49,8 +50,30 @@ pub struct StepResult {
     pub phase: StepPhase,
     pub status: StepStatus,
     pub evidence: Option<Evidence>,
+    pub warnings: Vec<String>,
     pub failures: Vec<String>,
     pub outputs_captured: HashMap<String, String>,
+}
+
+#[cfg_attr(not(test), allow(dead_code))]
+impl StepResult {
+    fn text_details(&self) -> Vec<String> {
+        self.warnings
+            .iter()
+            .map(|warning| format!("WARNING: {warning}"))
+            .chain(self.failures.iter().cloned())
+            .collect()
+    }
+
+    fn json_details(&self) -> serde_json::Value {
+        serde_json::json!({
+            "name": self.name,
+            "phase": self.phase.as_str(),
+            "status": self.status.as_str(),
+            "warnings": self.warnings,
+            "failures": self.failures,
+        })
+    }
 }
 
 #[cfg_attr(not(test), allow(dead_code))]
@@ -214,6 +237,7 @@ impl WorkflowExecutor {
                     phase,
                     status: StepStatus::Error,
                     evidence: None,
+                    warnings: Vec::new(),
                     failures: vec![format!(
                         "Step `{}` preparation failed: {message}",
                         step.name
@@ -230,17 +254,26 @@ impl WorkflowExecutor {
         }
 
         let evaluation = self.executor.execute(&executable).await;
+        let status = step_status_from_evaluation(evaluation.status);
         let failures = with_timeout_context(&step.name, step.timeout, evaluation.failures);
+        let (status, warnings, failures) = if step.warn_only && status == StepStatus::Failed {
+            (StepStatus::Warn, failures, Vec::new())
+        } else {
+            (status, Vec::new(), failures)
+        };
         let mut result = StepResult {
             name: step.name.clone(),
             phase,
-            status: step_status_from_evaluation(evaluation.status),
+            status,
             evidence: Some(evaluation.evidence),
+            warnings,
             failures,
             outputs_captured: HashMap::new(),
         };
 
-        if matches!(result.status, StepStatus::Passed) && !step.outputs.is_empty() {
+        if matches!(result.status, StepStatus::Passed | StepStatus::Warn)
+            && !step.outputs.is_empty()
+        {
             match extract_step_outputs(&step.outputs, result.evidence.as_ref().expect("present")) {
                 Ok(extracted) => {
                     result.outputs_captured = extracted.clone();
@@ -283,8 +316,33 @@ fn skipped_step_result(step: &ScenarioStep, phase: StepPhase, reason: String) ->
         phase,
         status: StepStatus::Skipped,
         evidence: None,
+        warnings: Vec::new(),
         failures: vec![reason],
         outputs_captured: HashMap::new(),
+    }
+}
+
+#[cfg_attr(not(test), allow(dead_code))]
+impl StepPhase {
+    fn as_str(self) -> &'static str {
+        match self {
+            StepPhase::Setup => "setup",
+            StepPhase::Main => "main",
+            StepPhase::Teardown => "teardown",
+        }
+    }
+}
+
+#[cfg_attr(not(test), allow(dead_code))]
+impl StepStatus {
+    fn as_str(self) -> &'static str {
+        match self {
+            StepStatus::Passed => "passed",
+            StepStatus::Warn => "warn",
+            StepStatus::Failed => "failed",
+            StepStatus::Error => "error",
+            StepStatus::Skipped => "skipped",
+        }
     }
 }
 
@@ -1013,6 +1071,7 @@ steps:
         expected: 0
         acceptance_criteria: AC-1
   - name: Step 2
+    warn_only: false
     interaction:
       type: cli
       command: step-2
@@ -1285,6 +1344,82 @@ steps:
         assert!(
             result.steps[0].failures[0]
                 .contains("Step `Wait for completion` timed out after 600 seconds")
+        );
+    }
+
+    #[tokio::test]
+    async fn workflow_warn_only_failed_check_marks_warning_and_does_not_fail_fast() {
+        let scenario_yaml = r#"
+id: TEST-WORKFLOW-WARN-ONLY-001
+name: Workflow warn-only checks
+applies_to:
+  capabilities: [test]
+  interfaces: [cli]
+acceptance_criteria:
+  - id: AC-1
+    description: warn-only checks do not block
+steps:
+  - name: Step 1
+    interaction:
+      type: cli
+      command: step-1
+    checks:
+      - type: status_code
+        expected: 0
+        acceptance_criteria: AC-1
+  - name: Cost tracking
+    warn_only: true
+    interaction:
+      type: cli
+      command: cost-tracking
+    checks:
+      - type: status_code
+        expected: 0
+        acceptance_criteria: AC-1
+  - name: Step 3
+    interaction:
+      type: cli
+      command: step-3
+    checks:
+      - type: status_code
+        expected: 0
+        acceptance_criteria: AC-1
+"#;
+        let scenario: ScenarioFile = serde_yaml::from_str(scenario_yaml).expect("parse workflow");
+        let (executor, executed_calls) = workflow_executor_with_cli(HashMap::from([
+            ("step-1".to_string(), Ok(Evidence::cli(0, "", ""))),
+            ("cost-tracking".to_string(), Ok(Evidence::cli(1, "", ""))),
+            ("step-3".to_string(), Ok(Evidence::cli(0, "", ""))),
+        ]));
+
+        let result = executor
+            .execute_workflow(&scenario, &test_manifest())
+            .await
+            .expect("workflow execution succeeds");
+
+        assert_eq!(result.status, EvaluationStatus::Passed);
+        assert_eq!(result.steps.len(), 3);
+        assert_eq!(result.steps[0].status, StepStatus::Passed);
+        assert_eq!(result.steps[1].status, StepStatus::Warn);
+        assert_eq!(result.steps[2].status, StepStatus::Passed);
+        assert!(result.steps[1].failures.is_empty());
+        assert_eq!(result.steps[1].warnings.len(), 1);
+        assert!(result.steps[1].warnings[0].contains("Check status_code failed"));
+
+        let warning_text = result.steps[1].text_details().join("\n");
+        assert!(warning_text.contains("WARNING: Check status_code failed"));
+
+        let warning_json = result.steps[1].json_details();
+        assert_eq!(warning_json["status"], "warn");
+        assert_eq!(
+            warning_json["warnings"][0].as_str(),
+            Some("Check status_code failed: expected 0, got 1 for AC AC-1")
+        );
+        assert_eq!(warning_json["failures"], serde_json::json!([]));
+
+        assert_eq!(
+            recorded_commands(&executed_calls),
+            vec!["step-1", "cost-tracking", "step-3"]
         );
     }
 }
