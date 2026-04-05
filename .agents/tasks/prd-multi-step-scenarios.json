@@ -440,7 +440,7 @@
     {
       "id": "US-015",
       "title": "Publish Workflow Documentation and Example Scenarios",
-      "status": "in_progress",
+      "status": "done",
       "dependsOn": [
         "US-012",
         "US-013"
@@ -453,8 +453,8 @@
         "Migration guidance states that existing single-interaction scenarios require no changes."
       ],
       "startedAt": "2026-04-05T06:29:53.223587+00:00",
-      "completedAt": null,
-      "updatedAt": "2026-04-05T06:29:53.223751+00:00"
+      "completedAt": "2026-04-05T06:33:50.597134+00:00",
+      "updatedAt": "2026-04-05T06:33:50.596928+00:00"
     }
   ]
 }
