@@ -7,5 +7,6 @@ Use td usage -q for subsequent reads.
 
 - Rust quality gates: `npm run rust:check`
 - Individual Rust checks: `npm run rust:fmt`, `npm run rust:clippy`, `npm run rust:test`
+- Apply Rust formatting fixes: `cargo fmt --all` (`npm run rust:fmt` is check-only)
 - Rust benchmark (US-008): `npm run rust:bench:catalog`
 - TypeScript build: `npm run build`
