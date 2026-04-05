@@ -125,14 +125,16 @@ fn to_executable_with_context(
     step_outputs: &HashMap<String, String>,
 ) -> Result<ExecutableScenario, String> {
     let context = ResolveContext::new(environment_values, step_outputs);
-    let resolved_params_value =
-        resolve_json_value(&serde_json::Value::Object(interaction.params.clone()), &context)
-            .map_err(|error| {
-                format!(
-                    "Scenario `{}` interaction template resolution failed: {error}",
-                    scenario.id
-                )
-            })?;
+    let resolved_params_value = resolve_json_value(
+        &serde_json::Value::Object(interaction.params.clone()),
+        &context,
+    )
+    .map_err(|error| {
+        format!(
+            "Scenario `{}` interaction template resolution failed: {error}",
+            scenario.id
+        )
+    })?;
     let resolved_params = resolved_params_value
         .as_object()
         .ok_or_else(|| "Resolved interaction params must be a JSON object".to_string())?;
@@ -416,15 +418,9 @@ checks:
         let env = HashMap::from([("TEST_REPO".to_string(), "org/repo".to_string())]);
         let outputs = HashMap::from([("TEST_REPO".to_string(), "from-output".to_string())]);
 
-        let executable = to_executable_with_context(
-            &scenario,
-            interaction,
-            checks,
-            &manifest,
-            &env,
-            &outputs,
-        )
-        .unwrap();
+        let executable =
+            to_executable_with_context(&scenario, interaction, checks, &manifest, &env, &outputs)
+                .unwrap();
 
         assert_eq!(
             executable.interaction.params["command"],

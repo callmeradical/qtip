@@ -10,7 +10,11 @@ fn prompt(label: &str, default: &str) -> String {
     let mut input = String::new();
     io::stdin().read_line(&mut input).ok();
     let input = input.trim().to_string();
-    if input.is_empty() { default.to_string() } else { input }
+    if input.is_empty() {
+        default.to_string()
+    } else {
+        input
+    }
 }
 
 fn prompt_list(label: &str, default: &str) -> Vec<String> {
@@ -22,8 +26,8 @@ fn prompt_list(label: &str, default: &str) -> Vec<String> {
 }
 
 pub fn run_init() -> Result<(), String> {
-    let cwd = std::env::current_dir()
-        .map_err(|e| format!("Could not get current directory: {e}"))?;
+    let cwd =
+        std::env::current_dir().map_err(|e| format!("Could not get current directory: {e}"))?;
     let dir_name = cwd
         .file_name()
         .and_then(|n| n.to_str())
@@ -68,7 +72,10 @@ pub fn run_init() -> Result<(), String> {
         if !scenarios_path.is_empty() {
             scenarios.insert("path".to_string(), serde_json::json!(scenarios_path));
         }
-        manifest.insert("scenarios".to_string(), serde_json::Value::Object(scenarios));
+        manifest.insert(
+            "scenarios".to_string(),
+            serde_json::Value::Object(scenarios),
+        );
     }
 
     let json = serde_json::to_string_pretty(&manifest)
@@ -86,7 +93,10 @@ pub fn run_init() -> Result<(), String> {
     if scenarios_repo.is_empty() {
         println!();
         println!("Tip: add a scenarios repo later:");
-        println!("  \"scenarios\": {{ \"repo\": \"owner/scenarios\", \"path\": \"{}\" }}", project_id);
+        println!(
+            "  \"scenarios\": {{ \"repo\": \"owner/scenarios\", \"path\": \"{}\" }}",
+            project_id
+        );
     }
 
     Ok(())

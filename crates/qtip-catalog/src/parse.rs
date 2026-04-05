@@ -4,9 +4,7 @@ use serde::Deserialize;
 use serde_yaml::Value as YamlValue;
 
 use crate::error::{CatalogError, CatalogStage};
-use crate::types::{
-    Scenario, ScenarioAssertion, ScenarioDocument, ScenarioRef, ScenarioStep,
-};
+use crate::types::{Scenario, ScenarioAssertion, ScenarioDocument, ScenarioRef, ScenarioStep};
 
 #[derive(Debug, Clone)]
 pub(crate) struct LoadedScenarioDocument {
@@ -48,7 +46,10 @@ struct RawScenarioAssertion {
 }
 
 impl RawScenario {
-    pub(crate) fn into_scenario(self, scenario_ref: &ScenarioRef) -> Result<Scenario, CatalogError> {
+    pub(crate) fn into_scenario(
+        self,
+        scenario_ref: &ScenarioRef,
+    ) -> Result<Scenario, CatalogError> {
         let id = required_non_empty(self.id, "id", scenario_ref)?;
         let service = required_non_empty(self.service, "service", scenario_ref)?;
 

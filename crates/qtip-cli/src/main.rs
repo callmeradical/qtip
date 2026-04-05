@@ -1,9 +1,10 @@
-#[allow(dead_code)]
-mod scenario;
 mod cache;
 mod init;
 mod install;
 mod pipeline;
+#[allow(dead_code)]
+mod scenario;
+mod step_output;
 mod variable_resolver;
 
 use std::path::{Path, PathBuf};
@@ -87,11 +88,7 @@ enum InstallCommands {
 
 /// Look for a manifest file in the current directory.
 fn discover_manifest() -> Option<PathBuf> {
-    let candidates = [
-        "qtip-manifest.json",
-        "qtip.json",
-        "manifest.json",
-    ];
+    let candidates = ["qtip-manifest.json", "qtip.json", "manifest.json"];
     for name in candidates {
         let path = Path::new(name);
         if path.exists() {
@@ -108,25 +105,21 @@ async fn main() -> ExitCode {
     // Handle subcommands
     if let Some(command) = &cli.command {
         return match command {
-            Commands::Init => {
-                match init::run_init() {
+            Commands::Init => match init::run_init() {
+                Ok(()) => ExitCode::SUCCESS,
+                Err(e) => {
+                    eprintln!("Error: {e}");
+                    ExitCode::FAILURE
+                }
+            },
+            Commands::Install { what } => match what {
+                InstallCommands::Skill => match install::install_skill() {
                     Ok(()) => ExitCode::SUCCESS,
                     Err(e) => {
                         eprintln!("Error: {e}");
                         ExitCode::FAILURE
                     }
-                }
-            }
-            Commands::Install { what } => match what {
-                InstallCommands::Skill => {
-                    match install::install_skill() {
-                        Ok(()) => ExitCode::SUCCESS,
-                        Err(e) => {
-                            eprintln!("Error: {e}");
-                            ExitCode::FAILURE
-                        }
-                    }
-                }
+                },
             },
         };
     }
@@ -173,7 +166,11 @@ async fn run_evaluate(cli: &Cli) -> ExitCode {
         eprintln!("[verbose] Capabilities: {:?}", manifest.capabilities);
         eprintln!(
             "[verbose] Interfaces: {:?}",
-            manifest.interfaces.iter().map(|i| i.interface_type()).collect::<Vec<_>>()
+            manifest
+                .interfaces
+                .iter()
+                .map(|i| i.interface_type())
+                .collect::<Vec<_>>()
         );
         eprintln!("[verbose] Environment: {}", manifest.environment.name);
     }
@@ -181,12 +178,16 @@ async fn run_evaluate(cli: &Cli) -> ExitCode {
     // Resolve scenarios directory: CLI flags > manifest config > error
     let scenarios_dir = if let Some(dir) = &cli.scenarios {
         dir.clone()
-    } else if let Some(repo) = cli.repo.as_deref().or_else(|| {
-        manifest.scenarios.as_ref().and_then(|s| s.repo.as_deref())
-    }) {
-        let path = cli.path.as_deref().or_else(|| {
-            manifest.scenarios.as_ref().and_then(|s| s.path.as_deref())
-        }).unwrap_or(".");
+    } else if let Some(repo) = cli
+        .repo
+        .as_deref()
+        .or_else(|| manifest.scenarios.as_ref().and_then(|s| s.repo.as_deref()))
+    {
+        let path = cli
+            .path
+            .as_deref()
+            .or_else(|| manifest.scenarios.as_ref().and_then(|s| s.path.as_deref()))
+            .unwrap_or(".");
 
         match cache::sync_repo(repo) {
             Ok(cached) => cached.join(path),
@@ -227,7 +228,10 @@ async fn run_evaluate(cli: &Cli) -> ExitCode {
     let resolved = pipeline::resolve_scenarios(&manifest, &scenarios);
 
     if verbose {
-        eprintln!("[verbose] Resolved {} scenario(s) for evaluation", resolved.len());
+        eprintln!(
+            "[verbose] Resolved {} scenario(s) for evaluation",
+            resolved.len()
+        );
         let skipped = scenarios.len() - resolved.len();
         if skipped > 0 {
             eprintln!("[verbose] Skipped {} scenario(s) (not applicable)", skipped);
@@ -285,7 +289,10 @@ async fn run_evaluate(cli: &Cli) -> ExitCode {
                 EvaluationStatus::Failed => "FAILED",
                 EvaluationStatus::Error => "ERROR",
             };
-            println!("  - {}: {} ... {icon}", result.scenario_id, result.scenario_id);
+            println!(
+                "  - {}: {} ... {icon}",
+                result.scenario_id, result.scenario_id
+            );
 
             for failure in &result.failures {
                 println!("      - {failure}");

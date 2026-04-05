@@ -4,7 +4,7 @@ use std::pin::Pin;
 
 use serde::Deserialize;
 
-use crate::check::{evaluate_checks, Check, Evidence};
+use crate::check::{Check, Evidence, evaluate_checks};
 
 pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 

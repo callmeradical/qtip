@@ -33,6 +33,7 @@ impl ResolveError {
         }
     }
 
+    #[cfg_attr(not(test), allow(dead_code))]
     pub fn unresolved(&self) -> &[String] {
         &self.unresolved
     }
@@ -40,17 +41,17 @@ impl ResolveError {
 
 impl std::fmt::Display for ResolveError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "Unresolved variables: {}",
-            self.unresolved.join(", ")
-        )
+        write!(f, "Unresolved variables: {}", self.unresolved.join(", "))
     }
 }
 
 impl std::error::Error for ResolveError {}
 
-pub fn resolve_template(template: &str, context: &ResolveContext<'_>) -> Result<String, ResolveError> {
+#[cfg_attr(not(test), allow(dead_code))]
+pub fn resolve_template(
+    template: &str,
+    context: &ResolveContext<'_>,
+) -> Result<String, ResolveError> {
     let mut unresolved = BTreeSet::new();
     let rendered = resolve_template_inner(template, context, &mut unresolved);
 
@@ -185,7 +186,10 @@ mod tests {
 
         let error =
             resolve_template("echo $loop_id then $build_id then $loop_id", &context).unwrap_err();
-        assert_eq!(error.unresolved(), &["build_id".to_string(), "loop_id".to_string()]);
+        assert_eq!(
+            error.unresolved(),
+            &["build_id".to_string(), "loop_id".to_string()]
+        );
     }
 
     #[test]

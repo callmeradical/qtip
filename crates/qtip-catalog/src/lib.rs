@@ -397,11 +397,11 @@ mod tests {
     use super::*;
     use std::collections::{HashMap, HashSet};
     use std::path::Path;
+    use std::path::PathBuf;
     use std::sync::Arc;
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::task::{Context, Poll, Wake, Waker};
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
-    use std::path::PathBuf;
 
     #[derive(Debug)]
     struct InMemorySource {

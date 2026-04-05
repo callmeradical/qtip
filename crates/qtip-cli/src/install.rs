@@ -43,7 +43,9 @@ impl Agent {
 
     fn usage_hint(&self) -> &str {
         match self {
-            Agent::ClaudeCode => "Use /qtip-scenarios or ask Claude to generate scenarios from a PRD.",
+            Agent::ClaudeCode => {
+                "Use /qtip-scenarios or ask Claude to generate scenarios from a PRD."
+            }
             Agent::OpenAiCodex => "Ask Codex to generate qtip scenarios from a PRD or issue.",
             Agent::GeminiCli => "Ask Gemini to generate qtip scenarios from a PRD or issue.",
         }

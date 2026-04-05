@@ -143,9 +143,9 @@ impl RawScenarioStep {
     fn into_scenario_step(self, section: &str, index: usize) -> Result<ScenarioStep, String> {
         let path_prefix = format!("{section}[{index}]");
         let name = required_non_empty(self.name, &format!("{path_prefix}.name"))?;
-        let interaction = self.interaction.ok_or_else(|| {
-            format!("Missing required field `{path_prefix}.interaction`")
-        })?;
+        let interaction = self
+            .interaction
+            .ok_or_else(|| format!("Missing required field `{path_prefix}.interaction`"))?;
 
         let mut outputs = HashMap::with_capacity(self.outputs.len());
         for (output_name, output) in self.outputs {

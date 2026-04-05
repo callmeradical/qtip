@@ -7,7 +7,10 @@ fn cache_dir_for(repo: &str) -> Result<PathBuf, String> {
         .map_err(|_| "Could not determine home directory".to_string())?;
 
     let safe_name = repo.replace('/', "__");
-    Ok(PathBuf::from(home).join(".qtip").join("cache").join(safe_name))
+    Ok(PathBuf::from(home)
+        .join(".qtip")
+        .join("cache")
+        .join(safe_name))
 }
 
 fn sha_file(cache_dir: &Path) -> PathBuf {
@@ -41,14 +44,12 @@ fn cached_sha(cache_dir: &Path) -> Option<String> {
 }
 
 fn write_sha(cache_dir: &Path, sha: &str) -> Result<(), String> {
-    std::fs::write(sha_file(cache_dir), sha)
-        .map_err(|e| format!("Failed to write SHA cache: {e}"))
+    std::fs::write(sha_file(cache_dir), sha).map_err(|e| format!("Failed to write SHA cache: {e}"))
 }
 
 fn clone_repo(repo_url: &str, dest: &Path) -> Result<(), String> {
     if dest.exists() {
-        std::fs::remove_dir_all(dest)
-            .map_err(|e| format!("Failed to clean cache dir: {e}"))?;
+        std::fs::remove_dir_all(dest).map_err(|e| format!("Failed to clean cache dir: {e}"))?;
     }
 
     let output = std::process::Command::new("git")

@@ -75,7 +75,9 @@ pub fn evaluate_checks(checks: &[Check], evidence: &Evidence) -> Vec<String> {
                         failures.push(format!(
                             "Check status_code failed: expected {}, got {} for AC {}",
                             expected,
-                            evidence.status.map_or("none".to_string(), |s| s.to_string()),
+                            evidence
+                                .status
+                                .map_or("none".to_string(), |s| s.to_string()),
                             check.acceptance_criteria,
                         ));
                     }

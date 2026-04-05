@@ -4,12 +4,12 @@ use std::time::SystemTime;
 use globset::{Glob, GlobSet, GlobSetBuilder};
 use ignore::WalkBuilder;
 
+use crate::BoxFuture;
 use crate::error::CatalogError;
 use crate::types::{
     ScenarioDocument, ScenarioDocumentEnvelope, ScenarioDocumentFormat, ScenarioRef,
     ScenarioRefEnvelope,
 };
-use crate::BoxFuture;
 
 pub trait ScenarioSource: Send + Sync {
     fn source_id(&self) -> &str;

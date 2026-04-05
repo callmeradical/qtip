@@ -53,10 +53,7 @@ impl ApiAdapter {
         self
     }
 
-    fn build_request(
-        &self,
-        interaction: &Interaction,
-    ) -> Result<RequestParts, String> {
+    fn build_request(&self, interaction: &Interaction) -> Result<RequestParts, String> {
         let method = interaction
             .params
             .get("method")
@@ -83,7 +80,12 @@ impl ApiAdapter {
             other => return Err(format!("Unsupported HTTP method: {other}")),
         }
 
-        Ok(RequestParts { method, url, body, headers })
+        Ok(RequestParts {
+            method,
+            url,
+            body,
+            headers,
+        })
     }
 
     async fn send_request(
@@ -137,7 +139,12 @@ impl Adapter for ApiAdapter {
         interaction: &'a Interaction,
     ) -> BoxFuture<'a, Result<Evidence, String>> {
         Box::pin(async move {
-            let RequestParts { method, url, body, headers } = self.build_request(interaction)?;
+            let RequestParts {
+                method,
+                url,
+                body,
+                headers,
+            } = self.build_request(interaction)?;
 
             let mut last_err = String::new();
             for attempt in 0..=self.max_retries {
@@ -157,10 +164,7 @@ impl Adapter for ApiAdapter {
                 }
             }
 
-            Err(format!(
-                "{last_err} (after {} retries)",
-                self.max_retries
-            ))
+            Err(format!("{last_err} (after {} retries)", self.max_retries))
         })
     }
 }

@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::time::SystemTime;
 
-use crate::error::{CatalogError, CatalogEnvelope, CatalogStage};
+use crate::error::{CatalogEnvelope, CatalogError, CatalogStage};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ScenarioRef {
@@ -13,7 +13,10 @@ pub struct ScenarioRef {
 }
 
 impl ScenarioRef {
-    pub(crate) fn validate_contract(&self, expected_source: Option<&str>) -> Result<(), CatalogError> {
+    pub(crate) fn validate_contract(
+        &self,
+        expected_source: Option<&str>,
+    ) -> Result<(), CatalogError> {
         if self.id.trim().is_empty() {
             return Err(CatalogError::invalid_source_record(
                 "Scenario reference is missing an id",

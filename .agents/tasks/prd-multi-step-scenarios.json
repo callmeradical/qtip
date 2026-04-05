@@ -213,7 +213,7 @@
     {
       "id": "US-003",
       "title": "Implement Variable Resolver",
-      "status": "in_progress",
+      "status": "done",
       "dependsOn": [
         "US-001"
       ],
@@ -225,13 +225,13 @@
         "Example: `$$HOME` renders as literal `$HOME` rather than attempting substitution."
       ],
       "startedAt": "2026-04-05T05:31:04.644231+00:00",
-      "completedAt": null,
-      "updatedAt": "2026-04-05T05:31:04.644451+00:00"
+      "completedAt": "2026-04-05T05:36:00.746499+00:00",
+      "updatedAt": "2026-04-05T05:36:00.746325+00:00"
     },
     {
       "id": "US-004",
       "title": "Implement Step Output Extraction",
-      "status": "open",
+      "status": "in_progress",
       "dependsOn": [
         "US-001"
       ],
@@ -241,7 +241,10 @@
         "Example: output mapping `loop_id <- $.loop_id` captures `smi-abc123` from command JSON output.",
         "Negative case: regex pattern with no capture group match returns extraction failure for that output key.",
         "Multiple outputs can be extracted from one step and merged into workflow context."
-      ]
+      ],
+      "startedAt": "2026-04-05T05:36:02.854215+00:00",
+      "completedAt": null,
+      "updatedAt": "2026-04-05T05:36:02.854488+00:00"
     },
     {
       "id": "US-005",

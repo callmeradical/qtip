@@ -547,8 +547,7 @@ mod tests {
             writeln!(tmp, "INFO request complete").unwrap();
 
             let adapter = LogAdapter::new();
-            let interaction =
-                log_interaction("ERROR", tmp.path().to_str().unwrap());
+            let interaction = log_interaction("ERROR", tmp.path().to_str().unwrap());
 
             let evidence = adapter.execute(&interaction).await.unwrap();
             assert_eq!(evidence.found, Some(true));
@@ -560,8 +559,7 @@ mod tests {
             writeln!(tmp, "INFO all good").unwrap();
 
             let adapter = LogAdapter::new();
-            let interaction =
-                log_interaction("ERROR", tmp.path().to_str().unwrap());
+            let interaction = log_interaction("ERROR", tmp.path().to_str().unwrap());
 
             let evidence = adapter.execute(&interaction).await.unwrap();
             assert_eq!(evidence.found, Some(false));
@@ -614,8 +612,8 @@ mod tests {
         #[tokio::test]
         async fn connection_refused_retries_and_reports_retry_count() {
             // Use a port that nothing listens on
-            let adapter = ApiAdapter::with_timeout(1)
-                .with_retries(2, std::time::Duration::from_millis(10));
+            let adapter =
+                ApiAdapter::with_timeout(1).with_retries(2, std::time::Duration::from_millis(10));
             let interaction = api_interaction("http://127.0.0.1:19999/test", "GET");
 
             let start = std::time::Instant::now();
@@ -654,8 +652,8 @@ mod tests {
 
         #[tokio::test]
         async fn zero_retries_fails_after_single_attempt() {
-            let adapter = ApiAdapter::with_timeout(1)
-                .with_retries(0, std::time::Duration::from_millis(10));
+            let adapter =
+                ApiAdapter::with_timeout(1).with_retries(0, std::time::Duration::from_millis(10));
             let interaction = api_interaction("http://127.0.0.1:19999/test", "GET");
 
             let result = adapter.execute(&interaction).await;
