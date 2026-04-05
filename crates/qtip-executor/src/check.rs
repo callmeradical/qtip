@@ -1,6 +1,7 @@
 use regex::Regex;
 use serde::Deserialize;
 use serde_json::Value;
+use std::collections::BTreeSet;
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -9,6 +10,8 @@ pub enum CheckType {
     JsonPath,
     LoopState,
     GithubPrExists,
+    GithubLabelsMatch,
+    GithubCommentContains,
     Stdout,
     Stderr,
     LogContains,
@@ -132,6 +135,12 @@ pub fn evaluate_checks(checks: &[Check], evidence: &Evidence) -> Vec<String> {
             }
             CheckType::GithubPrExists => {
                 evaluate_github_pr_exists_check(check, evidence, &mut failures);
+            }
+            CheckType::GithubLabelsMatch => {
+                evaluate_github_labels_match_check(check, evidence, &mut failures);
+            }
+            CheckType::GithubCommentContains => {
+                evaluate_github_comment_contains_check(check, evidence, &mut failures);
             }
         }
     }
@@ -385,6 +394,206 @@ fn evaluate_github_pr_exists_check(check: &Check, evidence: &Evidence, failures:
     }
 }
 
+#[derive(Default)]
+struct GithubLabelsMatchFilters {
+    labels: Vec<String>,
+    exact: bool,
+}
+
+impl GithubLabelsMatchFilters {
+    fn from_check(check: &Check) -> Result<Self, String> {
+        let Some(expected) = &check.expected else {
+            return Err("missing expected labels in `expected`".to_string());
+        };
+
+        match expected {
+            Value::Array(labels) => Ok(Self {
+                labels: string_array_values(labels, "expected labels")?,
+                exact: false,
+            }),
+            Value::Object(object) => {
+                let labels_value = object
+                    .get("labels")
+                    .or_else(|| object.get("expected"))
+                    .ok_or_else(|| "missing `labels` array in `expected`".to_string())?;
+                let labels = labels_value
+                    .as_array()
+                    .ok_or_else(|| "`labels` must be an array of strings".to_string())
+                    .and_then(|items| string_array_values(items, "labels"))?;
+                let exact = match object.get("exact") {
+                    None | Some(Value::Null) => false,
+                    Some(Value::Bool(value)) => *value,
+                    Some(_) => return Err("`exact` must be a boolean".to_string()),
+                };
+
+                Ok(Self { labels, exact })
+            }
+            _ => Err("`expected` must be an array of labels or object with `labels`".to_string()),
+        }
+    }
+}
+
+fn evaluate_github_labels_match_check(
+    check: &Check,
+    evidence: &Evidence,
+    failures: &mut Vec<String>,
+) {
+    let payload = match loop_state_json_evidence(evidence) {
+        Ok(payload) => payload,
+        Err(message) => {
+            failures.push(format!(
+                "Check github_labels_match failed: {} for AC {}",
+                message, check.acceptance_criteria
+            ));
+            return;
+        }
+    };
+
+    let filters = match GithubLabelsMatchFilters::from_check(check) {
+        Ok(filters) => filters,
+        Err(message) => {
+            failures.push(format!(
+                "Check github_labels_match failed: {} for AC {}",
+                message, check.acceptance_criteria
+            ));
+            return;
+        }
+    };
+
+    let actual_labels = match github_label_names(&payload) {
+        Ok(labels) => labels,
+        Err(message) => {
+            failures.push(format!(
+                "Check github_labels_match failed: {} for AC {}",
+                message, check.acceptance_criteria
+            ));
+            return;
+        }
+    };
+
+    let expected_set: BTreeSet<String> = filters.labels.into_iter().collect();
+    let actual_set: BTreeSet<String> = actual_labels.into_iter().collect();
+    let missing: Vec<String> = expected_set.difference(&actual_set).cloned().collect();
+
+    if !missing.is_empty() {
+        failures.push(format!(
+            "Check github_labels_match failed: missing expected labels [{}] in actual labels [{}] for AC {}",
+            missing.join(", "),
+            set_to_csv(&actual_set),
+            check.acceptance_criteria
+        ));
+        return;
+    }
+
+    if filters.exact {
+        let extras: Vec<String> = actual_set.difference(&expected_set).cloned().collect();
+        if !extras.is_empty() {
+            failures.push(format!(
+                "Check github_labels_match failed: expected exact labels [{}], but found extra labels [{}] for AC {}",
+                set_to_csv(&expected_set),
+                extras.join(", "),
+                check.acceptance_criteria
+            ));
+        }
+    }
+}
+
+#[derive(Default)]
+struct GithubCommentContainsFilter {
+    pattern: Option<String>,
+}
+
+impl GithubCommentContainsFilter {
+    fn from_check(check: &Check) -> Result<Self, String> {
+        let Some(expected) = &check.expected else {
+            return Err("missing `pattern` configuration in `expected`".to_string());
+        };
+
+        let pattern = match expected {
+            Value::String(value) => Some(value.clone()),
+            Value::Object(object) => match object.get("pattern") {
+                Some(Value::String(value)) => Some(value.clone()),
+                Some(_) => return Err("`pattern` must be a string".to_string()),
+                None => None,
+            },
+            _ => {
+                return Err(
+                    "`expected` must be a string pattern or object with `pattern`".to_string(),
+                );
+            }
+        };
+
+        Ok(Self { pattern })
+    }
+}
+
+fn evaluate_github_comment_contains_check(
+    check: &Check,
+    evidence: &Evidence,
+    failures: &mut Vec<String>,
+) {
+    let payload = match loop_state_json_evidence(evidence) {
+        Ok(payload) => payload,
+        Err(message) => {
+            failures.push(format!(
+                "Check github_comment_contains failed: {} for AC {}",
+                message, check.acceptance_criteria
+            ));
+            return;
+        }
+    };
+
+    let filters = match GithubCommentContainsFilter::from_check(check) {
+        Ok(filters) => filters,
+        Err(message) => {
+            failures.push(format!(
+                "Check github_comment_contains failed: {} for AC {}",
+                message, check.acceptance_criteria
+            ));
+            return;
+        }
+    };
+
+    let Some(pattern) = filters.pattern else {
+        failures.push(format!(
+            "Check github_comment_contains failed: missing `pattern` for AC {}",
+            check.acceptance_criteria
+        ));
+        return;
+    };
+
+    let regex = match Regex::new(&pattern) {
+        Ok(regex) => regex,
+        Err(error) => {
+            failures.push(format!(
+                "Check github_comment_contains failed: invalid `pattern` regex `{}` ({}) for AC {}",
+                pattern, error, check.acceptance_criteria
+            ));
+            return;
+        }
+    };
+
+    let comments = match github_comment_bodies(&payload) {
+        Ok(comments) => comments,
+        Err(message) => {
+            failures.push(format!(
+                "Check github_comment_contains failed: {} for AC {}",
+                message, check.acceptance_criteria
+            ));
+            return;
+        }
+    };
+
+    if !comments.iter().any(|body| regex.is_match(body)) {
+        failures.push(format!(
+            "Check github_comment_contains failed: no comment body matched pattern `{}` across {} comment(s) for AC {}",
+            pattern,
+            comments.len(),
+            check.acceptance_criteria
+        ));
+    }
+}
+
 fn compile_filter_regex(
     pattern: Option<&str>,
     filter_name: &str,
@@ -405,6 +614,95 @@ fn compile_filter_regex(
             None
         }
     }
+}
+
+fn string_array_values(values: &[Value], field_name: &str) -> Result<Vec<String>, String> {
+    values
+        .iter()
+        .enumerate()
+        .map(|(index, value)| match value.as_str() {
+            Some(label) => Ok(label.to_string()),
+            None => Err(format!(
+                "{field_name} item at index {index} must be a string"
+            )),
+        })
+        .collect()
+}
+
+fn github_label_names(payload: &Value) -> Result<Vec<String>, String> {
+    let raw_labels = match payload {
+        Value::Array(labels) => labels,
+        Value::Object(object) => {
+            let labels = object
+                .get("labels")
+                .ok_or_else(|| "missing `labels` array in JSON output".to_string())?;
+            labels
+                .as_array()
+                .ok_or_else(|| "`labels` must be an array".to_string())?
+        }
+        _ => {
+            return Err(format!(
+                "expected JSON object with `labels` array, got {}",
+                json_type_name(payload)
+            ));
+        }
+    };
+
+    raw_labels
+        .iter()
+        .enumerate()
+        .map(|(index, value)| match value {
+            Value::String(label) => Ok(label.clone()),
+            Value::Object(label) => label
+                .get("name")
+                .and_then(Value::as_str)
+                .map(str::to_string)
+                .ok_or_else(|| format!("label at index {index} missing string `name`")),
+            _ => Err(format!(
+                "label at index {index} must be a string or object with `name`"
+            )),
+        })
+        .collect()
+}
+
+fn github_comment_bodies(payload: &Value) -> Result<Vec<String>, String> {
+    let raw_comments = match payload {
+        Value::Array(comments) => comments,
+        Value::Object(object) => {
+            let comments = object
+                .get("comments")
+                .ok_or_else(|| "missing `comments` array in JSON output".to_string())?;
+            comments
+                .as_array()
+                .ok_or_else(|| "`comments` must be an array".to_string())?
+        }
+        _ => {
+            return Err(format!(
+                "expected JSON array or object with `comments`, got {}",
+                json_type_name(payload)
+            ));
+        }
+    };
+
+    raw_comments
+        .iter()
+        .enumerate()
+        .map(|(index, comment)| match comment {
+            Value::String(body) => Ok(body.clone()),
+            Value::Object(object) => object
+                .get("body")
+                .and_then(Value::as_str)
+                .map(str::to_string)
+                .ok_or_else(|| format!("comment at index {index} missing string `body`")),
+            _ => Err(format!(
+                "comment at index {index} must be a string or object with `body`"
+            )),
+        })
+        .collect()
+}
+
+fn set_to_csv(values: &BTreeSet<String>) -> String {
+    values.iter().cloned().collect::<Vec<String>>().join(", ")
 }
 
 fn loop_state_json_evidence(evidence: &Evidence) -> Result<Value, String> {

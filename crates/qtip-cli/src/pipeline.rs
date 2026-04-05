@@ -593,16 +593,19 @@ fn to_executable_with_context(
                 "json_path" => CheckType::JsonPath,
                 "loop_state" => CheckType::LoopState,
                 "github_pr_exists" => CheckType::GithubPrExists,
+                "github_labels_match" => CheckType::GithubLabelsMatch,
+                "github_comment_contains" => CheckType::GithubCommentContains,
                 "stdout" => CheckType::Stdout,
                 "stderr" => CheckType::Stderr,
                 "log_contains" => CheckType::LogContains,
                 "log_not_contains" => CheckType::LogNotContains,
                 _ => CheckType::StatusCode, // fallback
             };
-            let expected = if check_type == CheckType::GithubPrExists {
-                github_pr_exists_expected(c)
-            } else {
-                c.expected.clone()
+            let expected = match check_type {
+                CheckType::GithubPrExists => github_pr_exists_expected(c),
+                CheckType::GithubLabelsMatch => github_labels_match_expected(c),
+                CheckType::GithubCommentContains => github_comment_contains_expected(c),
+                _ => c.expected.clone(),
             };
             Check {
                 check_type,
@@ -653,6 +656,51 @@ fn github_pr_exists_expected(check: &ScenarioCheck) -> Option<serde_json::Value>
         expected.insert(
             "state".to_string(),
             serde_json::Value::String(state.clone()),
+        );
+    }
+
+    if expected.is_empty() {
+        check.expected.clone()
+    } else {
+        Some(serde_json::Value::Object(expected))
+    }
+}
+
+fn github_labels_match_expected(check: &ScenarioCheck) -> Option<serde_json::Value> {
+    let mut expected = match &check.expected {
+        Some(serde_json::Value::Object(object)) => object.clone(),
+        Some(serde_json::Value::Array(labels)) => {
+            let mut object = serde_json::Map::new();
+            object.insert(
+                "labels".to_string(),
+                serde_json::Value::Array(labels.clone()),
+            );
+            object
+        }
+        _ => serde_json::Map::new(),
+    };
+
+    if let Some(exact) = check.exact {
+        expected.insert("exact".to_string(), serde_json::Value::Bool(exact));
+    }
+
+    if expected.is_empty() {
+        check.expected.clone()
+    } else {
+        Some(serde_json::Value::Object(expected))
+    }
+}
+
+fn github_comment_contains_expected(check: &ScenarioCheck) -> Option<serde_json::Value> {
+    let mut expected = match &check.expected {
+        Some(serde_json::Value::Object(object)) => object.clone(),
+        _ => serde_json::Map::new(),
+    };
+
+    if let Some(pattern) = &check.pattern {
+        expected.insert(
+            "pattern".to_string(),
+            serde_json::Value::String(pattern.clone()),
         );
     }
 
@@ -1111,6 +1159,104 @@ checks:
                 "base_ref": "main",
                 "title_pattern": "Add loop .*",
                 "state": "OPEN"
+            }))
+        );
+    }
+
+    #[test]
+    fn to_executable_maps_github_labels_match_expected_and_exact() {
+        let scenario_yaml = r#"
+id: TEST-CLI-GITHUB-LABELS-MATCH-001
+name: GitHub labels check mapping
+applies_to:
+  capabilities: [test]
+  interfaces: [cli]
+acceptance_criteria:
+  - id: AC-1
+    description: github_labels_match maps expected labels and exact mode
+interaction:
+  type: cli
+  command: gh issue view 1 --json labels
+checks:
+  - type: github_labels_match
+    expected: [bug]
+    exact: true
+    acceptance_criteria: AC-1
+"#;
+        let scenario: ScenarioFile = serde_yaml::from_str(scenario_yaml).expect("parse scenario");
+        let (interaction, checks) = scenario.as_single().expect("single scenario");
+
+        let manifest: SubjectManifest = serde_json::from_str(
+            r#"{
+  "projectId": "github-labels-match-map",
+  "environment": "local",
+  "interfaces": ["cli"],
+  "capabilities": ["test"]
+}"#,
+        )
+        .expect("manifest should parse");
+
+        let executable = to_executable(&scenario, interaction, checks, &manifest)
+            .expect("scenario conversion should succeed");
+
+        assert_eq!(executable.checks.len(), 1);
+        assert_eq!(
+            executable.checks[0].check_type,
+            CheckType::GithubLabelsMatch
+        );
+        assert_eq!(
+            executable.checks[0].expected,
+            Some(serde_json::json!({
+                "labels": ["bug"],
+                "exact": true
+            }))
+        );
+    }
+
+    #[test]
+    fn to_executable_maps_github_comment_contains_pattern() {
+        let scenario_yaml = r#"
+id: TEST-CLI-GITHUB-COMMENT-CONTAINS-001
+name: GitHub comment check mapping
+applies_to:
+  capabilities: [test]
+  interfaces: [cli]
+acceptance_criteria:
+  - id: AC-1
+    description: github_comment_contains maps regex pattern
+interaction:
+  type: cli
+  command: gh issue view 1 --json comments
+checks:
+  - type: github_comment_contains
+    pattern: "(?i)triaged"
+    acceptance_criteria: AC-1
+"#;
+        let scenario: ScenarioFile = serde_yaml::from_str(scenario_yaml).expect("parse scenario");
+        let (interaction, checks) = scenario.as_single().expect("single scenario");
+
+        let manifest: SubjectManifest = serde_json::from_str(
+            r#"{
+  "projectId": "github-comment-contains-map",
+  "environment": "local",
+  "interfaces": ["cli"],
+  "capabilities": ["test"]
+}"#,
+        )
+        .expect("manifest should parse");
+
+        let executable = to_executable(&scenario, interaction, checks, &manifest)
+            .expect("scenario conversion should succeed");
+
+        assert_eq!(executable.checks.len(), 1);
+        assert_eq!(
+            executable.checks[0].check_type,
+            CheckType::GithubCommentContains
+        );
+        assert_eq!(
+            executable.checks[0].expected,
+            Some(serde_json::json!({
+                "pattern": "(?i)triaged"
             }))
         );
     }

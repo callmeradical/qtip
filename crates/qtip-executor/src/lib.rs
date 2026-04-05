@@ -391,6 +391,93 @@ mod tests {
         assert!(failures[0].contains("AC-9"));
     }
 
+    // -- github_labels_match checks --
+
+    #[test]
+    fn github_labels_match_passes_when_expected_is_subset_and_exact_false() {
+        let checks = vec![Check {
+            check_type: CheckType::GithubLabelsMatch,
+            expected: Some(json!({
+                "labels": ["bug"],
+                "exact": false
+            })),
+            path: None,
+            exists: None,
+            acceptance_criteria: "AC-10".to_string(),
+        }];
+        let evidence = Evidence::cli(0, r#"{"labels":[{"name":"bug"},{"name":"triaged"}]}"#, "");
+
+        let failures = evaluate_checks(&checks, &evidence);
+        assert!(failures.is_empty());
+    }
+
+    #[test]
+    fn github_labels_match_fails_when_exact_true_and_output_has_extra_labels() {
+        let checks = vec![Check {
+            check_type: CheckType::GithubLabelsMatch,
+            expected: Some(json!({
+                "labels": ["bug"],
+                "exact": true
+            })),
+            path: None,
+            exists: None,
+            acceptance_criteria: "AC-10".to_string(),
+        }];
+        let evidence = Evidence::cli(0, r#"{"labels":[{"name":"bug"},{"name":"triaged"}]}"#, "");
+
+        let failures = evaluate_checks(&checks, &evidence);
+        assert_eq!(failures.len(), 1);
+        assert!(failures[0].contains("expected exact labels [bug]"));
+        assert!(failures[0].contains("extra labels [triaged]"));
+        assert!(failures[0].contains("AC-10"));
+    }
+
+    // -- github_comment_contains checks --
+
+    #[test]
+    fn github_comment_contains_passes_when_a_comment_matches_pattern() {
+        let checks = vec![Check {
+            check_type: CheckType::GithubCommentContains,
+            expected: Some(json!({
+                "pattern": "(?i)triaged"
+            })),
+            path: None,
+            exists: None,
+            acceptance_criteria: "AC-11".to_string(),
+        }];
+        let evidence = Evidence::cli(
+            0,
+            r#"[{"body":"Needs work"},{"body":"Issue has been TRIAGED"}]"#,
+            "",
+        );
+
+        let failures = evaluate_checks(&checks, &evidence);
+        assert!(failures.is_empty());
+    }
+
+    #[test]
+    fn github_comment_contains_fails_when_no_comment_body_matches_pattern() {
+        let checks = vec![Check {
+            check_type: CheckType::GithubCommentContains,
+            expected: Some(json!({
+                "pattern": "(?i)triaged"
+            })),
+            path: None,
+            exists: None,
+            acceptance_criteria: "AC-11".to_string(),
+        }];
+        let evidence = Evidence::cli(
+            0,
+            r#"[{"body":"Needs work"},{"body":"No label updates yet"}]"#,
+            "",
+        );
+
+        let failures = evaluate_checks(&checks, &evidence);
+        assert_eq!(failures.len(), 1);
+        assert!(failures[0].contains("no comment body matched pattern"));
+        assert!(failures[0].contains("AC-11"));
+    }
+
     // -- multiple checks --
 
     #[test]
