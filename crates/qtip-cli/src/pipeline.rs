@@ -1,13 +1,17 @@
 use std::path::Path;
 
-use qtip_executor::check::{Check, CheckType};
+use qtip_executor::check::{Check, CheckType, Evidence};
 use qtip_executor::executor::{
-    EvaluationResult, EvaluationStatus, ExecutableScenario,
-    Interaction as ExecInteraction, ScenarioExecutor,
+    EvaluationResult, EvaluationStatus, ExecutableScenario, Interaction as ExecInteraction,
+    ScenarioExecutor,
 };
-use qtip_resolver::{AppliesTo, ScenarioManifest, ScenarioResolver, SubjectInterface, SubjectQuery};
+use qtip_resolver::{
+    AppliesTo, ScenarioManifest, ScenarioResolver, SubjectInterface, SubjectQuery,
+};
 
-use crate::scenario::{ScenarioFile, SubjectManifest};
+use crate::scenario::{
+    Check as ScenarioCheck, Interaction as ScenarioInteraction, ScenarioFile, SubjectManifest,
+};
 
 #[derive(Debug)]
 pub struct SubjectResult {
@@ -92,32 +96,29 @@ pub fn resolve_scenarios<'a>(
 }
 
 /// Convert a ScenarioFile + manifest context into an ExecutableScenario.
-fn to_executable(scenario: &ScenarioFile, manifest: &SubjectManifest) -> ExecutableScenario {
-    let mut params: std::collections::HashMap<String, serde_json::Value> = scenario
-        .interaction
+fn to_executable(
+    scenario: &ScenarioFile,
+    interaction: &ScenarioInteraction,
+    checks: &[ScenarioCheck],
+    manifest: &SubjectManifest,
+) -> ExecutableScenario {
+    let mut params: std::collections::HashMap<String, serde_json::Value> = interaction
         .params
         .iter()
         .map(|(k, v)| (k.clone(), v.clone()))
         .collect();
 
     // For API interactions, resolve the full URL from manifest
-    if scenario.interaction.interaction_type == "api"
-        && let Some(request) = scenario.interaction.params.get("request")
+    if interaction.interaction_type == "api"
+        && let Some(request) = interaction.params.get("request")
         && let Some(path) = request.get("path").and_then(|p| p.as_str())
     {
-        let service = scenario
-            .interaction
-            .params
-            .get("service")
-            .and_then(|s| s.as_str());
+        let service = interaction.params.get("service").and_then(|s| s.as_str());
 
         let base_url = manifest
             .interfaces
             .iter()
-            .find(|i| {
-                i.interface_type() == "api"
-                    && (service.is_none() || i.name() == service)
-            })
+            .find(|i| i.interface_type() == "api" && (service.is_none() || i.name() == service))
             .and_then(|i| i.base_url())
             .or_else(|| manifest.environment.get("api_base_url"))
             .unwrap_or("http://localhost");
@@ -137,7 +138,7 @@ fn to_executable(scenario: &ScenarioFile, manifest: &SubjectManifest) -> Executa
     }
 
     // For log interactions, inject log_path from manifest
-    if scenario.interaction.interaction_type == "logs" {
+    if interaction.interaction_type == "logs" {
         let log_path = manifest
             .observability
             .as_ref()
@@ -153,8 +154,7 @@ fn to_executable(scenario: &ScenarioFile, manifest: &SubjectManifest) -> Executa
         }
     }
 
-    let checks = scenario
-        .checks
+    let checks = checks
         .iter()
         .map(|c| {
             let check_type = match c.check_type.as_str() {
@@ -180,7 +180,7 @@ fn to_executable(scenario: &ScenarioFile, manifest: &SubjectManifest) -> Executa
         id: scenario.id.clone(),
         name: scenario.name.clone(),
         interaction: ExecInteraction {
-            interaction_type: scenario.interaction.interaction_type.clone(),
+            interaction_type: interaction.interaction_type.clone(),
             params,
         },
         checks,
@@ -195,22 +195,38 @@ pub async fn execute_subject(
 ) -> SubjectResult {
     let mut executor = ScenarioExecutor::new();
 
-    executor.register_adapter(Box::new(
-        qtip_executor::adapters::cli::CliAdapter::new(),
-    ));
-    executor.register_adapter(Box::new(
-        qtip_executor::adapters::log::LogAdapter::new(),
-    ));
-    executor.register_adapter(Box::new(
-        qtip_executor::adapters::api::ApiAdapter::new(),
-    ));
+    executor.register_adapter(Box::new(qtip_executor::adapters::cli::CliAdapter::new()));
+    executor.register_adapter(Box::new(qtip_executor::adapters::log::LogAdapter::new()));
+    executor.register_adapter(Box::new(qtip_executor::adapters::api::ApiAdapter::new()));
 
     let mut results = Vec::new();
     for scenario in scenarios {
+        let Some((interaction, checks)) = scenario.as_single() else {
+            let message = format!(
+                "Scenario `{}` is a workflow and cannot be executed yet",
+                scenario.id
+            );
+            if verbose {
+                eprintln!("[verbose] {message}");
+            }
+            results.push(EvaluationResult {
+                scenario_id: scenario.id.clone(),
+                status: EvaluationStatus::Error,
+                evidence: Evidence::cli(1, "", ""),
+                failures: vec![message],
+            });
+            continue;
+        };
+
         if verbose {
-            eprintln!("[verbose] Executing scenario: {} ({})", scenario.id, scenario.interaction.interaction_type);
+            eprintln!(
+                "[verbose] Executing scenario: {} ({}, {})",
+                scenario.id,
+                interaction.interaction_type,
+                scenario.kind_label()
+            );
         }
-        let executable = to_executable(scenario, manifest);
+        let executable = to_executable(scenario, interaction, checks, manifest);
         if verbose {
             eprintln!("[verbose]   params: {:?}", executable.interaction.params);
             eprintln!("[verbose]   checks: {}", executable.checks.len());
