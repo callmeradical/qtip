@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 use std::path::Path;
+use std::time::Instant;
 
-use qtip_executor::check::{Check, CheckType, Evidence};
+use qtip_executor::check::{Check, CheckType, Evidence, evaluate_checks};
 use qtip_executor::executor::{
-    Adapter, EvaluationResult, EvaluationStatus, ExecutableScenario,
-    Interaction as ExecInteraction, ScenarioExecutor, TIMEOUT_OVERRIDE_PARAM,
+    Adapter, EvaluationStatus, ExecutableScenario, Interaction as ExecInteraction,
+    ScenarioExecutor, TIMEOUT_OVERRIDE_PARAM,
 };
 use qtip_resolver::{
     AppliesTo, ScenarioManifest, ScenarioResolver, SubjectInterface, SubjectQuery,
@@ -20,9 +21,26 @@ use crate::variable_resolver::{ResolveContext, resolve_json_value};
 #[derive(Debug)]
 pub struct SubjectResult {
     pub project_id: String,
-    pub results: Vec<EvaluationResult>,
+    pub results: Vec<ScenarioExecutionResult>,
     pub passed: usize,
     pub failed: usize,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ScenarioExecutionKind {
+    Single,
+    Workflow,
+}
+
+#[derive(Debug, Clone)]
+pub struct ScenarioExecutionResult {
+    pub scenario_id: String,
+    pub scenario_name: String,
+    pub kind: ScenarioExecutionKind,
+    pub status: EvaluationStatus,
+    pub failures: Vec<String>,
+    pub duration_ms: u64,
+    pub workflow: Option<WorkflowResult>,
 }
 
 #[cfg_attr(not(test), allow(dead_code))]
@@ -44,15 +62,35 @@ pub enum StepStatus {
 }
 
 #[cfg_attr(not(test), allow(dead_code))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CheckStatus {
+    Passed,
+    Warn,
+    Failed,
+    Skipped,
+}
+
+#[cfg_attr(not(test), allow(dead_code))]
+#[derive(Debug, Clone)]
+pub struct CheckResult {
+    pub check_type: String,
+    pub acceptance_criteria: String,
+    pub status: CheckStatus,
+    pub details: Vec<String>,
+}
+
+#[cfg_attr(not(test), allow(dead_code))]
 #[derive(Debug, Clone)]
 pub struct StepResult {
     pub name: String,
     pub phase: StepPhase,
     pub status: StepStatus,
+    pub duration_ms: u64,
     pub evidence: Option<Evidence>,
     pub warnings: Vec<String>,
     pub failures: Vec<String>,
     pub outputs_captured: HashMap<String, String>,
+    pub checks: Vec<CheckResult>,
 }
 
 #[cfg_attr(not(test), allow(dead_code))]
@@ -70,8 +108,26 @@ impl StepResult {
             "name": self.name,
             "phase": self.phase.as_str(),
             "status": self.status.as_str(),
+            "duration_ms": self.duration_ms,
             "warnings": self.warnings,
             "failures": self.failures,
+            "outputs_captured": self.outputs_captured,
+            "checks": self
+                .checks
+                .iter()
+                .map(CheckResult::json_details)
+                .collect::<Vec<_>>(),
+        })
+    }
+}
+
+impl CheckResult {
+    fn json_details(&self) -> serde_json::Value {
+        serde_json::json!({
+            "type": self.check_type,
+            "acceptance_criteria": self.acceptance_criteria,
+            "status": self.status.as_str(),
+            "details": self.details,
         })
     }
 }
@@ -222,6 +278,7 @@ impl WorkflowExecutor {
         environment_values: &HashMap<String, String>,
         output_context: &mut HashMap<String, String>,
     ) -> StepResult {
+        let started_at = Instant::now();
         let mut executable = match to_executable_with_context(
             scenario,
             &step.interaction,
@@ -236,6 +293,7 @@ impl WorkflowExecutor {
                     name: step.name.clone(),
                     phase,
                     status: StepStatus::Error,
+                    duration_ms: started_at.elapsed().as_millis() as u64,
                     evidence: None,
                     warnings: Vec::new(),
                     failures: vec![format!(
@@ -243,6 +301,7 @@ impl WorkflowExecutor {
                         step.name
                     )],
                     outputs_captured: HashMap::new(),
+                    checks: Vec::new(),
                 };
             }
         };
@@ -254,6 +313,11 @@ impl WorkflowExecutor {
         }
 
         let evaluation = self.executor.execute(&executable).await;
+        let check_results = if evaluation.status == EvaluationStatus::Error {
+            skipped_check_results(&executable.checks)
+        } else {
+            evaluate_check_results(&executable.checks, &evaluation.evidence, step.warn_only)
+        };
         let status = step_status_from_evaluation(evaluation.status);
         let failures = with_timeout_context(&step.name, step.timeout, evaluation.failures);
         let (status, warnings, failures) = if step.warn_only && status == StepStatus::Failed {
@@ -265,10 +329,12 @@ impl WorkflowExecutor {
             name: step.name.clone(),
             phase,
             status,
+            duration_ms: started_at.elapsed().as_millis() as u64,
             evidence: Some(evaluation.evidence),
             warnings,
             failures,
             outputs_captured: HashMap::new(),
+            checks: check_results,
         };
 
         if matches!(result.status, StepStatus::Passed | StepStatus::Warn)
@@ -315,10 +381,12 @@ fn skipped_step_result(step: &ScenarioStep, phase: StepPhase, reason: String) ->
         name: step.name.clone(),
         phase,
         status: StepStatus::Skipped,
+        duration_ms: 0,
         evidence: None,
         warnings: Vec::new(),
         failures: vec![reason],
         outputs_captured: HashMap::new(),
+        checks: Vec::new(),
     }
 }
 
@@ -342,6 +410,27 @@ impl StepStatus {
             StepStatus::Failed => "failed",
             StepStatus::Error => "error",
             StepStatus::Skipped => "skipped",
+        }
+    }
+}
+
+#[cfg_attr(not(test), allow(dead_code))]
+impl CheckStatus {
+    fn as_str(self) -> &'static str {
+        match self {
+            CheckStatus::Passed => "passed",
+            CheckStatus::Warn => "warn",
+            CheckStatus::Failed => "failed",
+            CheckStatus::Skipped => "skipped",
+        }
+    }
+}
+
+impl ScenarioExecutionKind {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            ScenarioExecutionKind::Single => "single",
+            ScenarioExecutionKind::Workflow => "workflow",
         }
     }
 }
@@ -385,6 +474,60 @@ fn collect_teardown_failures(teardown_results: &[StepResult]) -> Vec<String> {
                     result.name,
                     result.failures.join("; ")
                 )
+            }
+        })
+        .collect()
+}
+
+fn check_type_label(check_type: &CheckType) -> &'static str {
+    match check_type {
+        CheckType::StatusCode => "status_code",
+        CheckType::JsonPath => "json_path",
+        CheckType::LoopState => "loop_state",
+        CheckType::GithubPrExists => "github_pr_exists",
+        CheckType::GithubLabelsMatch => "github_labels_match",
+        CheckType::GithubCommentContains => "github_comment_contains",
+        CheckType::Stdout => "stdout",
+        CheckType::Stderr => "stderr",
+        CheckType::LogContains => "log_contains",
+        CheckType::LogNotContains => "log_not_contains",
+    }
+}
+
+fn skipped_check_results(checks: &[Check]) -> Vec<CheckResult> {
+    checks
+        .iter()
+        .map(|check| CheckResult {
+            check_type: check_type_label(&check.check_type).to_string(),
+            acceptance_criteria: check.acceptance_criteria.clone(),
+            status: CheckStatus::Skipped,
+            details: vec!["Check not evaluated because interaction execution failed".to_string()],
+        })
+        .collect()
+}
+
+fn evaluate_check_results(
+    checks: &[Check],
+    evidence: &Evidence,
+    warn_only: bool,
+) -> Vec<CheckResult> {
+    checks
+        .iter()
+        .map(|check| {
+            let failures = evaluate_checks(std::slice::from_ref(check), evidence);
+            let (status, details) = if failures.is_empty() {
+                (CheckStatus::Passed, Vec::new())
+            } else if warn_only {
+                (CheckStatus::Warn, failures)
+            } else {
+                (CheckStatus::Failed, failures)
+            };
+
+            CheckResult {
+                check_type: check_type_label(&check.check_type).to_string(),
+                acceptance_criteria: check.acceptance_criteria.clone(),
+                status,
+                details,
             }
         })
         .collect()
@@ -796,6 +939,7 @@ pub async fn execute_subject(
 
     let mut results = Vec::new();
     for scenario in scenarios {
+        let started_at = Instant::now();
         match &scenario.kind {
             ScenarioKind::Single {
                 interaction,
@@ -815,11 +959,14 @@ pub async fn execute_subject(
                         if verbose {
                             eprintln!("[verbose] {message}");
                         }
-                        results.push(EvaluationResult {
+                        results.push(ScenarioExecutionResult {
                             scenario_id: scenario.id.clone(),
+                            scenario_name: scenario.name.clone(),
+                            kind: ScenarioExecutionKind::Single,
                             status: EvaluationStatus::Error,
-                            evidence: Evidence::cli(1, "", ""),
                             failures: vec![message],
+                            duration_ms: started_at.elapsed().as_millis() as u64,
+                            workflow: None,
                         });
                         continue;
                     }
@@ -835,7 +982,15 @@ pub async fn execute_subject(
                         eprintln!("[verbose]   failure: {}", failure);
                     }
                 }
-                results.push(result);
+                results.push(ScenarioExecutionResult {
+                    scenario_id: scenario.id.clone(),
+                    scenario_name: scenario.name.clone(),
+                    kind: ScenarioExecutionKind::Single,
+                    status: result.status,
+                    failures: result.failures,
+                    duration_ms: started_at.elapsed().as_millis() as u64,
+                    workflow: None,
+                });
             }
             ScenarioKind::Workflow { .. } => {
                 if verbose {
@@ -849,11 +1004,14 @@ pub async fn execute_subject(
                             if verbose {
                                 eprintln!("[verbose] {message}");
                             }
-                            results.push(EvaluationResult {
+                            results.push(ScenarioExecutionResult {
                                 scenario_id: scenario.id.clone(),
+                                scenario_name: scenario.name.clone(),
+                                kind: ScenarioExecutionKind::Workflow,
                                 status: EvaluationStatus::Error,
-                                evidence: Evidence::cli(1, "", ""),
                                 failures: vec![message],
+                                duration_ms: started_at.elapsed().as_millis() as u64,
+                                workflow: None,
                             });
                             continue;
                         }
@@ -866,11 +1024,14 @@ pub async fn execute_subject(
                     }
                 }
 
-                results.push(EvaluationResult {
+                results.push(ScenarioExecutionResult {
                     scenario_id: scenario.id.clone(),
+                    scenario_name: scenario.name.clone(),
+                    kind: ScenarioExecutionKind::Workflow,
                     status: workflow_result.status.clone(),
-                    evidence: Evidence::cli(0, "", ""),
                     failures,
+                    duration_ms: started_at.elapsed().as_millis() as u64,
+                    workflow: Some(workflow_result),
                 });
             }
         }

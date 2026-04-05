@@ -358,7 +358,7 @@
     {
       "id": "US-011",
       "title": "Route CLI Execution by Scenario Kind",
-      "status": "in_progress",
+      "status": "done",
       "dependsOn": [
         "US-002",
         "US-005"
@@ -371,13 +371,13 @@
         "Execution routing is covered by command-level tests."
       ],
       "startedAt": "2026-04-05T06:11:56.282497+00:00",
-      "completedAt": null,
-      "updatedAt": "2026-04-05T06:11:56.282722+00:00"
+      "completedAt": "2026-04-05T06:16:38.840697+00:00",
+      "updatedAt": "2026-04-05T06:16:38.840548+00:00"
     },
     {
       "id": "US-012",
       "title": "Extend JSON Report for Workflow Detail",
-      "status": "open",
+      "status": "in_progress",
       "dependsOn": [
         "US-011",
         "US-008",
@@ -390,7 +390,10 @@
         "Example: report records `outputs_captured.loop_id` for step `Create loop` and check-level outcomes for each step.",
         "Negative case: single-interaction scenarios keep existing report shape and are tagged `kind=single` without workflow arrays.",
         "JSON structure is documented and validated by reporter tests."
-      ]
+      ],
+      "startedAt": "2026-04-05T06:16:40.946014+00:00",
+      "completedAt": null,
+      "updatedAt": "2026-04-05T06:16:40.946218+00:00"
     },
     {
       "id": "US-013",

@@ -97,6 +97,21 @@ When a manifest is submitted, qtip will:
 3.  **Evaluate**: Compare the results against the defined checks.
 4.  **Report**: Produce a structured JSON report mapping failures to Acceptance Criteria.
 
+Use `--output json` for machine-readable reporting:
+
+```bash
+qtip ./manifest.json --scenarios ./my-scenarios --output json
+```
+
+Each scenario result includes a `kind` field:
+- `kind: "single"` keeps the flat result shape (`id`, `name`, `status`, `failures`).
+- `kind: "workflow"` adds workflow detail with `duration_ms` and `setup`/`steps`/`teardown` arrays.
+
+Workflow step entries include:
+- `name`, `status`, `duration_ms`
+- `checks`: per-check outcomes with `type`, `acceptance_criteria`, `status`, and details
+- `outputs_captured`: values extracted for downstream steps (for example `loop_id`)
+
 ## 7. Modes of Operation
 
 Depending on your workflow, you can use **qtip** in three primary ways:

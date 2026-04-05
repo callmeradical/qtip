@@ -58,15 +58,51 @@ struct JsonReport {
     passed: usize,
     failed: usize,
     total: usize,
+    duration_ms: u64,
     results: Vec<JsonResult>,
 }
 
 #[derive(Serialize)]
-struct JsonResult {
-    id: String,
+#[serde(untagged)]
+enum JsonResult {
+    Single {
+        id: String,
+        name: String,
+        kind: String,
+        status: String,
+        failures: Vec<String>,
+    },
+    Workflow {
+        id: String,
+        name: String,
+        kind: String,
+        status: String,
+        duration_ms: u64,
+        failures: Vec<String>,
+        setup: Vec<JsonWorkflowStep>,
+        steps: Vec<JsonWorkflowStep>,
+        teardown: Vec<JsonWorkflowStep>,
+    },
+}
+
+#[derive(Serialize)]
+struct JsonWorkflowStep {
     name: String,
     status: String,
+    duration_ms: u64,
+    outputs_captured: std::collections::HashMap<String, String>,
+    checks: Vec<JsonStepCheckOutcome>,
+    warnings: Vec<String>,
     failures: Vec<String>,
+}
+
+#[derive(Serialize)]
+struct JsonStepCheckOutcome {
+    #[serde(rename = "type")]
+    check_type: String,
+    acceptance_criteria: String,
+    status: String,
+    details: Vec<String>,
 }
 
 #[derive(Subcommand)]
@@ -96,6 +132,54 @@ fn discover_manifest() -> Option<PathBuf> {
         }
     }
     None
+}
+
+fn evaluation_status_label(status: &EvaluationStatus) -> &'static str {
+    match status {
+        EvaluationStatus::Passed => "passed",
+        EvaluationStatus::Failed => "failed",
+        EvaluationStatus::Error => "error",
+    }
+}
+
+fn step_status_label(status: pipeline::StepStatus) -> &'static str {
+    match status {
+        pipeline::StepStatus::Passed => "passed",
+        pipeline::StepStatus::Warn => "warn",
+        pipeline::StepStatus::Failed => "failed",
+        pipeline::StepStatus::Error => "error",
+        pipeline::StepStatus::Skipped => "skipped",
+    }
+}
+
+fn check_status_label(status: pipeline::CheckStatus) -> &'static str {
+    match status {
+        pipeline::CheckStatus::Passed => "passed",
+        pipeline::CheckStatus::Warn => "warn",
+        pipeline::CheckStatus::Failed => "failed",
+        pipeline::CheckStatus::Skipped => "skipped",
+    }
+}
+
+fn workflow_step_to_json(step: &pipeline::StepResult) -> JsonWorkflowStep {
+    JsonWorkflowStep {
+        name: step.name.clone(),
+        status: step_status_label(step.status).to_string(),
+        duration_ms: step.duration_ms,
+        outputs_captured: step.outputs_captured.clone(),
+        checks: step
+            .checks
+            .iter()
+            .map(|check| JsonStepCheckOutcome {
+                check_type: check.check_type.clone(),
+                acceptance_criteria: check.acceptance_criteria.clone(),
+                status: check_status_label(check.status).to_string(),
+                details: check.details.clone(),
+            })
+            .collect(),
+        warnings: step.warnings.clone(),
+        failures: step.failures.clone(),
+    }
 }
 
 #[tokio::main]
@@ -255,6 +339,11 @@ async fn run_evaluate(cli: &Cli) -> ExitCode {
     let subject_result = pipeline::execute_subject(&manifest, &resolved, verbose).await;
 
     if is_json {
+        let total_duration_ms = subject_result
+            .results
+            .iter()
+            .map(|result| result.duration_ms)
+            .sum();
         let report = JsonReport {
             project_id: subject_result.project_id.clone(),
             status: if subject_result.failed == 0 {
@@ -265,19 +354,46 @@ async fn run_evaluate(cli: &Cli) -> ExitCode {
             passed: subject_result.passed,
             failed: subject_result.failed,
             total: subject_result.results.len(),
+            duration_ms: total_duration_ms,
             results: subject_result
                 .results
                 .iter()
-                .map(|r| JsonResult {
-                    id: r.scenario_id.clone(),
-                    name: r.scenario_id.clone(),
-                    status: match r.status {
-                        EvaluationStatus::Passed => "passed",
-                        EvaluationStatus::Failed => "failed",
-                        EvaluationStatus::Error => "error",
+                .map(|result| match (&result.kind, &result.workflow) {
+                    (pipeline::ScenarioExecutionKind::Single, _) => JsonResult::Single {
+                        id: result.scenario_id.clone(),
+                        name: result.scenario_name.clone(),
+                        kind: result.kind.as_str().to_string(),
+                        status: evaluation_status_label(&result.status).to_string(),
+                        failures: result.failures.clone(),
+                    },
+                    (pipeline::ScenarioExecutionKind::Workflow, Some(workflow)) => {
+                        JsonResult::Workflow {
+                            id: result.scenario_id.clone(),
+                            name: result.scenario_name.clone(),
+                            kind: result.kind.as_str().to_string(),
+                            status: evaluation_status_label(&result.status).to_string(),
+                            duration_ms: result.duration_ms,
+                            failures: result.failures.clone(),
+                            setup: workflow.setup.iter().map(workflow_step_to_json).collect(),
+                            steps: workflow.steps.iter().map(workflow_step_to_json).collect(),
+                            teardown: workflow
+                                .teardown
+                                .iter()
+                                .map(workflow_step_to_json)
+                                .collect(),
+                        }
                     }
-                    .to_string(),
-                    failures: r.failures.clone(),
+                    (pipeline::ScenarioExecutionKind::Workflow, None) => JsonResult::Workflow {
+                        id: result.scenario_id.clone(),
+                        name: result.scenario_name.clone(),
+                        kind: result.kind.as_str().to_string(),
+                        status: evaluation_status_label(&result.status).to_string(),
+                        duration_ms: result.duration_ms,
+                        failures: result.failures.clone(),
+                        setup: Vec::new(),
+                        steps: Vec::new(),
+                        teardown: Vec::new(),
+                    },
                 })
                 .collect(),
         };
@@ -291,7 +407,7 @@ async fn run_evaluate(cli: &Cli) -> ExitCode {
             };
             println!(
                 "  - {}: {} ... {icon}",
-                result.scenario_id, result.scenario_id
+                result.scenario_id, result.scenario_name
             );
 
             for failure in &result.failures {
