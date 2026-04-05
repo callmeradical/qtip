@@ -51,9 +51,29 @@ pub enum ScenarioKind {
 struct RawScenarioKind {
     interaction: Option<Interaction>,
     checks: Option<Vec<Check>>,
-    setup: Option<Vec<ScenarioStep>>,
-    steps: Option<Vec<ScenarioStep>>,
-    teardown: Option<Vec<ScenarioStep>>,
+    setup: Option<Vec<RawScenarioStep>>,
+    steps: Option<Vec<RawScenarioStep>>,
+    teardown: Option<Vec<RawScenarioStep>>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct RawScenarioStep {
+    name: Option<String>,
+    interaction: Option<Interaction>,
+    #[serde(default)]
+    checks: Vec<Check>,
+    #[serde(default)]
+    outputs: HashMap<String, RawStepOutput>,
+    timeout: Option<u64>,
+    #[serde(default)]
+    warn_only: bool,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct RawStepOutput {
+    from: Option<String>,
+    path: Option<String>,
+    pattern: Option<String>,
 }
 
 impl RawScenarioKind {
@@ -102,10 +122,14 @@ impl RawScenarioKind {
                     );
                 }
 
+                let setup = parse_workflow_steps(self.setup.unwrap_or_default(), "setup")?;
+                let steps = parse_workflow_steps(steps, "steps")?;
+                let teardown = parse_workflow_steps(self.teardown.unwrap_or_default(), "teardown")?;
+
                 Ok(ScenarioKind::Workflow {
-                    setup: self.setup.unwrap_or_default(),
+                    setup,
                     steps,
-                    teardown: self.teardown.unwrap_or_default(),
+                    teardown,
                 })
             }
             (false, false) => {
@@ -113,6 +137,70 @@ impl RawScenarioKind {
             }
         }
     }
+}
+
+impl RawScenarioStep {
+    fn into_scenario_step(self, section: &str, index: usize) -> Result<ScenarioStep, String> {
+        let path_prefix = format!("{section}[{index}]");
+        let name = required_non_empty(self.name, &format!("{path_prefix}.name"))?;
+        let interaction = self.interaction.ok_or_else(|| {
+            format!("Missing required field `{path_prefix}.interaction`")
+        })?;
+
+        let mut outputs = HashMap::with_capacity(self.outputs.len());
+        for (output_name, output) in self.outputs {
+            let parsed = output.into_step_output(&path_prefix, &output_name)?;
+            outputs.insert(output_name, parsed);
+        }
+
+        Ok(ScenarioStep {
+            name,
+            interaction,
+            checks: self.checks,
+            outputs,
+            timeout: self.timeout,
+            warn_only: self.warn_only,
+        })
+    }
+}
+
+impl RawStepOutput {
+    fn into_step_output(self, path_prefix: &str, output_name: &str) -> Result<StepOutput, String> {
+        let field_path = format!("{path_prefix}.outputs.{output_name}.from");
+        let from = required_non_empty(self.from, &field_path)?;
+        let normalized = from.to_ascii_lowercase();
+
+        if !matches!(normalized.as_str(), "json" | "stdout" | "stderr") {
+            return Err(format!(
+                "Invalid value for `{field_path}`: expected one of `json`, `stdout`, `stderr`, got `{from}`"
+            ));
+        }
+
+        Ok(StepOutput {
+            from: normalized,
+            path: self.path,
+            pattern: self.pattern,
+        })
+    }
+}
+
+fn parse_workflow_steps(
+    raw_steps: Vec<RawScenarioStep>,
+    section: &str,
+) -> Result<Vec<ScenarioStep>, String> {
+    let mut steps = Vec::with_capacity(raw_steps.len());
+    for (index, step) in raw_steps.into_iter().enumerate() {
+        steps.push(step.into_scenario_step(section, index)?);
+    }
+    Ok(steps)
+}
+
+fn required_non_empty(value: Option<String>, field_path: &str) -> Result<String, String> {
+    let value = value.ok_or_else(|| format!("Missing required field `{field_path}`"))?;
+    if value.trim().is_empty() {
+        return Err(format!("Field `{field_path}` cannot be empty"));
+    }
+    Ok(value)
 }
 
 impl<'de> Deserialize<'de> for ScenarioKind {
@@ -305,6 +393,20 @@ pub struct LogSource {
 #[cfg(test)]
 mod tests {
     use super::{ScenarioFile, ScenarioKind};
+    use std::path::Path;
+
+    fn read_legacy_fixture(path: &str) -> String {
+        let fixture_path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("..")
+            .join(path);
+        std::fs::read_to_string(&fixture_path).unwrap_or_else(|error| {
+            panic!(
+                "failed to read legacy fixture {}: {error}",
+                fixture_path.display()
+            )
+        })
+    }
 
     #[test]
     fn parse_single_scenario_uses_single_kind() {
@@ -335,7 +437,7 @@ checks:
     }
 
     #[test]
-    fn parse_workflow_scenario_preserves_step_order() {
+    fn parse_workflow_scenario_preserves_step_order_and_outputs() {
         let yaml = r#"
 id: TEST-WORKFLOW-001
 name: Workflow scenario
@@ -350,6 +452,10 @@ steps:
     interaction:
       type: cli
       command: echo first
+    outputs:
+      loop_id:
+        from: json
+        path: $.loop_id
   - name: Second step
     interaction:
       type: cli
@@ -402,5 +508,84 @@ checks:
             err.to_string().contains("both `interaction` and `steps`"),
             "unexpected parse error: {err}"
         );
+    }
+
+    #[test]
+    fn parse_workflow_rejects_invalid_output_source_with_field_path() {
+        let yaml = r#"
+id: TEST-WORKFLOW-INVALID-OUTPUT
+name: Invalid workflow output source
+applies_to:
+  capabilities: [auth]
+  interfaces: [cli]
+acceptance_criteria:
+  - id: AC-1
+    description: Should fail parsing
+steps:
+  - name: Create loop
+    interaction:
+      type: cli
+      command: smith loop create --output json
+    outputs:
+      loop_id:
+        from: body
+        path: $.loop_id
+"#;
+
+        let err = serde_yaml::from_str::<ScenarioFile>(yaml)
+            .expect_err("scenario should fail with unsupported output source");
+        let err_text = err.to_string();
+
+        assert!(
+            err_text.contains("steps[0].outputs.loop_id.from"),
+            "unexpected parse error: {err_text}"
+        );
+        assert!(
+            err_text.contains("expected one of `json`, `stdout`, `stderr`"),
+            "unexpected parse error: {err_text}"
+        );
+    }
+
+    #[test]
+    fn parse_workflow_rejects_missing_step_interaction_with_field_path() {
+        let yaml = r#"
+id: TEST-WORKFLOW-MISSING-INTERACTION
+name: Missing interaction
+applies_to:
+  capabilities: [auth]
+  interfaces: [cli]
+acceptance_criteria:
+  - id: AC-1
+    description: Should fail parsing
+steps:
+  - name: Create loop
+"#;
+
+        let err = serde_yaml::from_str::<ScenarioFile>(yaml)
+            .expect_err("scenario should fail when a step is missing interaction");
+        let err_text = err.to_string();
+
+        assert!(
+            err_text.contains("steps[0].interaction"),
+            "unexpected parse error: {err_text}"
+        );
+    }
+
+    #[test]
+    fn legacy_single_fixture_parses_as_single_with_unchanged_checks() {
+        let yaml = read_legacy_fixture("scenarios/cli/test-hello.yaml");
+        let scenario: ScenarioFile =
+            serde_yaml::from_str(&yaml).expect("legacy single-step fixture should parse");
+
+        let (interaction, checks) = scenario
+            .as_single()
+            .expect("legacy fixture should remain single scenario");
+        assert_eq!(scenario.kind_label(), "single");
+        assert_eq!(interaction.interaction_type, "cli");
+        assert_eq!(checks.len(), 2);
+        assert_eq!(checks[0].check_type, "status_code");
+        assert_eq!(checks[1].check_type, "stdout");
+        assert_eq!(checks[0].acceptance_criteria, "AC-1");
+        assert_eq!(checks[1].acceptance_criteria, "AC-1");
     }
 }
