@@ -7,6 +7,7 @@ use serde::Deserialize;
 use crate::check::{Check, Evidence, evaluate_checks};
 
 pub type BoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
+pub const TIMEOUT_OVERRIDE_PARAM: &str = "__qtip_timeout_secs";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EvaluationStatus {

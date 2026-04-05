@@ -64,7 +64,7 @@ struct RawScenarioStep {
     checks: Vec<Check>,
     #[serde(default)]
     outputs: HashMap<String, RawStepOutput>,
-    timeout: Option<u64>,
+    timeout: Option<i64>,
     #[serde(default)]
     warn_only: bool,
 }
@@ -146,6 +146,15 @@ impl RawScenarioStep {
         let interaction = self
             .interaction
             .ok_or_else(|| format!("Missing required field `{path_prefix}.interaction`"))?;
+        let timeout = match self.timeout {
+            Some(value) if value <= 0 => {
+                return Err(format!(
+                    "Invalid value for `{path_prefix}.timeout`: expected a positive integer, got `{value}`"
+                ));
+            }
+            Some(value) => Some(value as u64),
+            None => None,
+        };
 
         let mut outputs = HashMap::with_capacity(self.outputs.len());
         for (output_name, output) in self.outputs {
@@ -158,7 +167,7 @@ impl RawScenarioStep {
             interaction,
             checks: self.checks,
             outputs,
-            timeout: self.timeout,
+            timeout,
             warn_only: self.warn_only,
         })
     }
@@ -567,6 +576,72 @@ steps:
 
         assert!(
             err_text.contains("steps[0].interaction"),
+            "unexpected parse error: {err_text}"
+        );
+    }
+
+    #[test]
+    fn parse_workflow_rejects_zero_timeout_with_step_context() {
+        let yaml = r#"
+id: TEST-WORKFLOW-ZERO-TIMEOUT
+name: Invalid timeout
+applies_to:
+  capabilities: [auth]
+  interfaces: [cli]
+acceptance_criteria:
+  - id: AC-1
+    description: Should fail parsing
+steps:
+  - name: Wait for completion
+    timeout: 0
+    interaction:
+      type: cli
+      command: smith loop wait
+"#;
+
+        let err = serde_yaml::from_str::<ScenarioFile>(yaml)
+            .expect_err("scenario should fail when timeout is zero");
+        let err_text = err.to_string();
+
+        assert!(
+            err_text.contains("steps[0].timeout"),
+            "unexpected parse error: {err_text}"
+        );
+        assert!(
+            err_text.contains("positive integer"),
+            "unexpected parse error: {err_text}"
+        );
+    }
+
+    #[test]
+    fn parse_workflow_rejects_negative_timeout_with_step_context() {
+        let yaml = r#"
+id: TEST-WORKFLOW-NEGATIVE-TIMEOUT
+name: Invalid timeout
+applies_to:
+  capabilities: [auth]
+  interfaces: [cli]
+acceptance_criteria:
+  - id: AC-1
+    description: Should fail parsing
+steps:
+  - name: Wait for completion
+    timeout: -5
+    interaction:
+      type: cli
+      command: smith loop wait
+"#;
+
+        let err = serde_yaml::from_str::<ScenarioFile>(yaml)
+            .expect_err("scenario should fail when timeout is negative");
+        let err_text = err.to_string();
+
+        assert!(
+            err_text.contains("steps[0].timeout"),
+            "unexpected parse error: {err_text}"
+        );
+        assert!(
+            err_text.contains("got `-5`"),
             "unexpected parse error: {err_text}"
         );
     }

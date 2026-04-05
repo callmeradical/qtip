@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use crate::check::Evidence;
-use crate::executor::{Adapter, BoxFuture, Interaction};
+use crate::executor::{Adapter, BoxFuture, Interaction, TIMEOUT_OVERRIDE_PARAM};
 
 type Headers = serde_json::Map<String, serde_json::Value>;
 
@@ -94,6 +94,7 @@ impl ApiAdapter {
         url: &str,
         body: &Option<serde_json::Value>,
         headers: &Option<Headers>,
+        timeout_secs: Option<u64>,
     ) -> Result<Evidence, reqwest::Error> {
         let mut request = match method {
             "GET" => self.client.get(url),
@@ -103,6 +104,9 @@ impl ApiAdapter {
             "PATCH" => self.client.patch(url),
             _ => self.client.get(url),
         };
+        if let Some(timeout_secs) = timeout_secs {
+            request = request.timeout(Duration::from_secs(timeout_secs));
+        }
 
         if let Some(body) = body {
             request = request.json(body);
@@ -145,6 +149,10 @@ impl Adapter for ApiAdapter {
                 body,
                 headers,
             } = self.build_request(interaction)?;
+            let timeout_override_secs = interaction
+                .params
+                .get(TIMEOUT_OVERRIDE_PARAM)
+                .and_then(|value| value.as_u64());
 
             let mut last_err = String::new();
             for attempt in 0..=self.max_retries {
@@ -153,7 +161,10 @@ impl Adapter for ApiAdapter {
                     tokio::time::sleep(backoff).await;
                 }
 
-                match self.send_request(&method, &url, &body, &headers).await {
+                match self
+                    .send_request(&method, &url, &body, &headers, timeout_override_secs)
+                    .await
+                {
                     Ok(evidence) => return Ok(evidence),
                     Err(err) => {
                         last_err = format!("HTTP request failed: {err}");

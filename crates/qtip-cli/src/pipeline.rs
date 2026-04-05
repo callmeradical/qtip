@@ -4,7 +4,7 @@ use std::path::Path;
 use qtip_executor::check::{Check, CheckType, Evidence};
 use qtip_executor::executor::{
     Adapter, EvaluationResult, EvaluationStatus, ExecutableScenario,
-    Interaction as ExecInteraction, ScenarioExecutor,
+    Interaction as ExecInteraction, ScenarioExecutor, TIMEOUT_OVERRIDE_PARAM,
 };
 use qtip_resolver::{
     AppliesTo, ScenarioManifest, ScenarioResolver, SubjectInterface, SubjectQuery,
@@ -199,7 +199,7 @@ impl WorkflowExecutor {
         environment_values: &HashMap<String, String>,
         output_context: &mut HashMap<String, String>,
     ) -> StepResult {
-        let executable = match to_executable_with_context(
+        let mut executable = match to_executable_with_context(
             scenario,
             &step.interaction,
             &step.checks,
@@ -222,14 +222,21 @@ impl WorkflowExecutor {
                 };
             }
         };
+        if let Some(timeout_secs) = step.timeout {
+            executable.interaction.params.insert(
+                TIMEOUT_OVERRIDE_PARAM.to_string(),
+                serde_json::Value::from(timeout_secs),
+            );
+        }
 
         let evaluation = self.executor.execute(&executable).await;
+        let failures = with_timeout_context(&step.name, step.timeout, evaluation.failures);
         let mut result = StepResult {
             name: step.name.clone(),
             phase,
             status: step_status_from_evaluation(evaluation.status),
             evidence: Some(evaluation.evidence),
-            failures: evaluation.failures,
+            failures,
             outputs_captured: HashMap::new(),
         };
 
@@ -323,6 +330,34 @@ fn collect_teardown_failures(teardown_results: &[StepResult]) -> Vec<String> {
             }
         })
         .collect()
+}
+
+fn with_timeout_context(
+    step_name: &str,
+    timeout_secs: Option<u64>,
+    failures: Vec<String>,
+) -> Vec<String> {
+    let Some(timeout_secs) = timeout_secs else {
+        return failures;
+    };
+
+    failures
+        .into_iter()
+        .map(|failure| {
+            if is_timeout_failure(&failure) {
+                format!("Step `{step_name}` timed out after {timeout_secs} seconds: {failure}")
+            } else {
+                failure
+            }
+        })
+        .collect()
+}
+
+fn is_timeout_failure(message: &str) -> bool {
+    let lowered = message.to_ascii_lowercase();
+    lowered.contains("timed out")
+        || lowered.contains("timeout")
+        || lowered.contains("deadline has elapsed")
 }
 
 /// Load all YAML scenario files from a directory.
@@ -640,6 +675,9 @@ mod tests {
     use std::path::Path;
     use std::sync::{Arc, Mutex};
 
+    type RecordedCall = (String, Option<u64>);
+    type RecordedCalls = Arc<Mutex<Vec<RecordedCall>>>;
+
     fn read_fixture(path: &str) -> String {
         let fixture_path = Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("..")
@@ -883,7 +921,7 @@ checks:
     #[derive(Clone)]
     struct RecordingCliAdapter {
         responses: HashMap<String, Result<Evidence, String>>,
-        executed_commands: Arc<Mutex<Vec<String>>>,
+        executed_calls: RecordedCalls,
     }
 
     impl Adapter for RecordingCliAdapter {
@@ -901,10 +939,15 @@ checks:
                 .and_then(|value| value.as_str())
                 .unwrap_or("")
                 .to_string();
-            self.executed_commands
+            let timeout_override = interaction
+                .params
+                .get(TIMEOUT_OVERRIDE_PARAM)
+                .and_then(|value| value.as_u64());
+
+            self.executed_calls
                 .lock()
                 .expect("lock commands")
-                .push(command.clone());
+                .push((command.clone(), timeout_override));
             let response = self.responses.get(&command).cloned().unwrap_or_else(|| {
                 Err(format!(
                     "No stub response configured for command `{command}`"
@@ -928,16 +971,25 @@ checks:
 
     fn workflow_executor_with_cli(
         responses: HashMap<String, Result<Evidence, String>>,
-    ) -> (WorkflowExecutor, Arc<Mutex<Vec<String>>>) {
-        let executed_commands = Arc::new(Mutex::new(Vec::new()));
+    ) -> (WorkflowExecutor, RecordedCalls) {
+        let executed_calls = Arc::new(Mutex::new(Vec::new()));
         let adapter = RecordingCliAdapter {
             responses,
-            executed_commands: Arc::clone(&executed_commands),
+            executed_calls: Arc::clone(&executed_calls),
         };
 
         let mut executor = WorkflowExecutor::new();
         executor.register_adapter(Box::new(adapter));
-        (executor, executed_commands)
+        (executor, executed_calls)
+    }
+
+    fn recorded_commands(calls: &RecordedCalls) -> Vec<String> {
+        calls
+            .lock()
+            .expect("lock calls")
+            .iter()
+            .map(|(command, _)| command.clone())
+            .collect()
     }
 
     #[tokio::test]
@@ -987,7 +1039,7 @@ teardown:
         acceptance_criteria: AC-1
 "#;
         let scenario: ScenarioFile = serde_yaml::from_str(scenario_yaml).expect("parse workflow");
-        let (executor, executed_commands) = workflow_executor_with_cli(HashMap::from([
+        let (executor, executed_calls) = workflow_executor_with_cli(HashMap::from([
             ("step-1".to_string(), Ok(Evidence::cli(0, "", ""))),
             ("step-2".to_string(), Ok(Evidence::cli(1, "", ""))),
             ("cleanup".to_string(), Ok(Evidence::cli(0, "", ""))),
@@ -1008,7 +1060,7 @@ teardown:
         assert_eq!(result.teardown[0].status, StepStatus::Passed);
         assert!(result.teardown_failures.is_empty());
         assert_eq!(
-            executed_commands.lock().expect("lock commands").clone(),
+            recorded_commands(&executed_calls),
             vec!["step-1", "step-2", "cleanup"]
         );
     }
@@ -1061,7 +1113,7 @@ teardown:
         acceptance_criteria: AC-1
 "#;
         let scenario: ScenarioFile = serde_yaml::from_str(scenario_yaml).expect("parse workflow");
-        let (executor, executed_commands) = workflow_executor_with_cli(HashMap::from([
+        let (executor, executed_calls) = workflow_executor_with_cli(HashMap::from([
             ("setup-1".to_string(), Ok(Evidence::cli(1, "", ""))),
             ("cleanup".to_string(), Ok(Evidence::cli(0, "", ""))),
         ]));
@@ -1079,7 +1131,7 @@ teardown:
         assert_eq!(result.steps[0].status, StepStatus::Skipped);
         assert_eq!(result.teardown[0].status, StepStatus::Passed);
         assert_eq!(
-            executed_commands.lock().expect("lock commands").clone(),
+            recorded_commands(&executed_calls),
             vec!["setup-1", "cleanup"]
         );
     }
@@ -1115,7 +1167,7 @@ teardown:
         acceptance_criteria: AC-1
 "#;
         let scenario: ScenarioFile = serde_yaml::from_str(scenario_yaml).expect("parse workflow");
-        let (executor, executed_commands) = workflow_executor_with_cli(HashMap::from([
+        let (executor, executed_calls) = workflow_executor_with_cli(HashMap::from([
             ("main-step".to_string(), Ok(Evidence::cli(0, "", ""))),
             ("cleanup".to_string(), Ok(Evidence::cli(1, "", ""))),
         ]));
@@ -1131,8 +1183,108 @@ teardown:
         assert_eq!(result.teardown_failures.len(), 1);
         assert!(result.teardown_failures[0].contains("Teardown step `Cleanup`"));
         assert_eq!(
-            executed_commands.lock().expect("lock commands").clone(),
+            recorded_commands(&executed_calls),
             vec!["main-step", "cleanup"]
+        );
+    }
+
+    #[tokio::test]
+    async fn workflow_executor_passes_timeout_override_to_target_step_only() {
+        let scenario_yaml = r#"
+id: TEST-WORKFLOW-TIMEOUT-001
+name: Workflow timeout override
+applies_to:
+  capabilities: [test]
+  interfaces: [cli]
+acceptance_criteria:
+  - id: AC-1
+    description: timeout is passed only on configured step
+steps:
+  - name: Quick check
+    interaction:
+      type: cli
+      command: quick-check
+    checks:
+      - type: status_code
+        expected: 0
+        acceptance_criteria: AC-1
+  - name: Wait for completion
+    timeout: 600
+    interaction:
+      type: cli
+      command: wait-for-completion
+    checks:
+      - type: status_code
+        expected: 0
+        acceptance_criteria: AC-1
+"#;
+        let scenario: ScenarioFile = serde_yaml::from_str(scenario_yaml).expect("parse workflow");
+        let (executor, executed_calls) = workflow_executor_with_cli(HashMap::from([
+            ("quick-check".to_string(), Ok(Evidence::cli(0, "", ""))),
+            (
+                "wait-for-completion".to_string(),
+                Ok(Evidence::cli(0, "", "")),
+            ),
+        ]));
+
+        let result = executor
+            .execute_workflow(&scenario, &test_manifest())
+            .await
+            .expect("workflow execution succeeds");
+
+        assert_eq!(result.status, EvaluationStatus::Passed);
+        assert_eq!(result.steps[0].status, StepStatus::Passed);
+        assert_eq!(result.steps[1].status, StepStatus::Passed);
+
+        let calls = executed_calls.lock().expect("lock calls").clone();
+        assert_eq!(
+            calls,
+            vec![
+                ("quick-check".to_string(), None),
+                ("wait-for-completion".to_string(), Some(600))
+            ]
+        );
+    }
+
+    #[tokio::test]
+    async fn workflow_timeout_error_includes_step_name_and_configured_timeout() {
+        let scenario_yaml = r#"
+id: TEST-WORKFLOW-TIMEOUT-002
+name: Workflow timeout error context
+applies_to:
+  capabilities: [test]
+  interfaces: [cli]
+acceptance_criteria:
+  - id: AC-1
+    description: timeout failure includes context
+steps:
+  - name: Wait for completion
+    timeout: 600
+    interaction:
+      type: cli
+      command: wait-for-completion
+    checks:
+      - type: status_code
+        expected: 0
+        acceptance_criteria: AC-1
+"#;
+        let scenario: ScenarioFile = serde_yaml::from_str(scenario_yaml).expect("parse workflow");
+        let (executor, _) = workflow_executor_with_cli(HashMap::from([(
+            "wait-for-completion".to_string(),
+            Err("Command timed out after 600 seconds".to_string()),
+        )]));
+
+        let result = executor
+            .execute_workflow(&scenario, &test_manifest())
+            .await
+            .expect("workflow execution succeeds");
+
+        assert_eq!(result.status, EvaluationStatus::Error);
+        assert_eq!(result.steps[0].status, StepStatus::Error);
+        assert_eq!(result.steps[0].failures.len(), 1);
+        assert!(
+            result.steps[0].failures[0]
+                .contains("Step `Wait for completion` timed out after 600 seconds")
         );
     }
 }

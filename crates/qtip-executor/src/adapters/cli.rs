@@ -1,5 +1,5 @@
 use crate::check::Evidence;
-use crate::executor::{Adapter, BoxFuture, Interaction};
+use crate::executor::{Adapter, BoxFuture, Interaction, TIMEOUT_OVERRIDE_PARAM};
 
 pub struct CliAdapter {
     timeout_secs: u64,
@@ -36,9 +36,14 @@ impl Adapter for CliAdapter {
                 .get("command")
                 .and_then(|v| v.as_str())
                 .ok_or_else(|| "CLI interaction missing 'command' field".to_string())?;
+            let timeout_secs = interaction
+                .params
+                .get(TIMEOUT_OVERRIDE_PARAM)
+                .and_then(|value| value.as_u64())
+                .unwrap_or(self.timeout_secs);
 
             let result = tokio::time::timeout(
-                std::time::Duration::from_secs(self.timeout_secs),
+                std::time::Duration::from_secs(timeout_secs),
                 tokio::process::Command::new("sh")
                     .arg("-c")
                     .arg(command)
@@ -54,10 +59,7 @@ impl Adapter for CliAdapter {
                     Ok(Evidence::cli(status, stdout, stderr))
                 }
                 Ok(Err(err)) => Err(format!("Failed to execute command: {err}")),
-                Err(_) => Err(format!(
-                    "Command timed out after {} seconds",
-                    self.timeout_secs
-                )),
+                Err(_) => Err(format!("Command timed out after {} seconds", timeout_secs)),
             }
         })
     }
