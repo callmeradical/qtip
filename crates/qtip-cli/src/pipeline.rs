@@ -254,3 +254,56 @@ pub async fn execute_subject(
         failed,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use qtip_executor::executor::EvaluationStatus;
+    use std::path::Path;
+
+    fn read_fixture(path: &str) -> String {
+        let fixture_path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
+            .join("..")
+            .join(path);
+        std::fs::read_to_string(&fixture_path).unwrap_or_else(|error| {
+            panic!("failed to read fixture {}: {error}", fixture_path.display())
+        })
+    }
+
+    #[tokio::test]
+    async fn legacy_single_fixture_parses_and_executes_as_single() {
+        let yaml = read_fixture("scenarios/cli/test-hello.yaml");
+        let scenario: ScenarioFile =
+            serde_yaml::from_str(&yaml).expect("legacy fixture should parse");
+
+        let (interaction, checks) = scenario
+            .as_single()
+            .expect("legacy fixture should remain single");
+        assert_eq!(interaction.interaction_type, "cli");
+        assert_eq!(checks.len(), 2);
+        assert_eq!(checks[0].check_type, "status_code");
+        assert_eq!(checks[1].check_type, "stdout");
+
+        let manifest: SubjectManifest = serde_json::from_str(
+            r#"{
+  "projectId": "legacy-single-fixture",
+  "environment": "local",
+  "interfaces": ["cli"],
+  "capabilities": ["test"]
+}"#,
+        )
+        .expect("manifest should parse");
+
+        let resolved = resolve_scenarios(&manifest, std::slice::from_ref(&scenario));
+        assert_eq!(resolved.len(), 1);
+
+        let result = execute_subject(&manifest, &resolved, false).await;
+        assert_eq!(result.passed, 1);
+        assert_eq!(result.failed, 0);
+        assert_eq!(result.results.len(), 1);
+        assert_eq!(result.results[0].scenario_id, "TEST-CLI-HELLO");
+        assert_eq!(result.results[0].status, EvaluationStatus::Passed);
+        assert!(result.results[0].failures.is_empty());
+    }
+}
